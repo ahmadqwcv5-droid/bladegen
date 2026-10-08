@@ -1,0 +1,491 @@
+{
+  "$defs": {
+    "AirfoilCoordinates": {
+      "additionalProperties": false,
+      "description": "Unmodified normalized upper and lower airfoil coordinate lists.",
+      "properties": {
+        "type": {
+          "const": "coordinates",
+          "description": "Airfoil representation discriminator; v0.1 and v0.2 support coordinates.",
+          "title": "Type",
+          "type": "string"
+        },
+        "upper": {
+          "description": "Ordered upper-surface [x/c, y/c] points in supplied contour order.",
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "description": "Coordinate normalized by local chord; normal-offset contours may extend slightly beyond 0..1.",
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "minItems": 3,
+          "title": "Upper",
+          "type": "array"
+        },
+        "lower": {
+          "description": "Ordered lower-surface [x/c, y/c] points in supplied contour order.",
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "description": "Coordinate normalized by local chord; normal-offset contours may extend slightly beyond 0..1.",
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "minItems": 3,
+          "title": "Lower",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "upper",
+        "lower"
+      ],
+      "title": "AirfoilCoordinates",
+      "type": "object"
+    },
+    "AirfoilSection": {
+      "additionalProperties": false,
+      "properties": {
+        "r_over_R": {
+          "description": "Section radial location divided by blade radius.",
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "R Over R",
+          "type": "number"
+        },
+        "airfoil": {
+          "description": "Normalized section contour; finite or sharp trailing edge is preserved.",
+          "discriminator": {
+            "mapping": {
+              "coordinates": "#/$defs/AirfoilCoordinates",
+              "naca4": "#/$defs/Naca4Airfoil"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/AirfoilCoordinates"
+            },
+            {
+              "$ref": "#/$defs/Naca4Airfoil"
+            }
+          ],
+          "title": "Airfoil"
+        },
+        "trailing_edge_thickness_mm": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "v0.2 physical chord-normal trailing-edge thickness in millimeters.",
+          "title": "Trailing Edge Thickness Mm"
+        },
+        "thickness_override_ratio": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "maximum": 1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Explicit engineering override of nominal NACA thickness; omit to require the thickness distribution to match the selected NACA code.",
+          "title": "Thickness Override Ratio"
+        }
+      },
+      "required": [
+        "r_over_R",
+        "airfoil"
+      ],
+      "title": "AirfoilSection",
+      "type": "object"
+    },
+    "ChordDistribution": {
+      "additionalProperties": false,
+      "properties": {
+        "interpolation": {
+          "$ref": "#/$defs/Interpolation",
+          "description": "Backend-independent radial interpolation algorithm."
+        },
+        "points": {
+          "description": "Chord control points.",
+          "items": {
+            "$ref": "#/$defs/ChordPoint"
+          },
+          "title": "Points",
+          "type": "array"
+        }
+      },
+      "required": [
+        "interpolation",
+        "points"
+      ],
+      "title": "ChordDistribution",
+      "type": "object"
+    },
+    "ChordPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "r_over_R": {
+          "description": "Radial station r/R.",
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "R Over R",
+          "type": "number"
+        },
+        "chord_over_R": {
+          "description": "Local chord divided by blade radius.",
+          "exclusiveMinimum": 0.0,
+          "title": "Chord Over R",
+          "type": "number"
+        }
+      },
+      "required": [
+        "r_over_R",
+        "chord_over_R"
+      ],
+      "title": "ChordPoint",
+      "type": "object"
+    },
+    "Interpolation": {
+      "description": "Product-level radial interpolation method.",
+      "enum": [
+        "linear",
+        "pchip"
+      ],
+      "title": "Interpolation",
+      "type": "string"
+    },
+    "Naca4Airfoil": {
+      "additionalProperties": false,
+      "description": "Canonical NACA 4-digit product input resolved before any backend.",
+      "properties": {
+        "type": {
+          "const": "naca4",
+          "title": "Type",
+          "type": "string"
+        },
+        "code": {
+          "pattern": "^[0-9]{4}$",
+          "title": "Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "code"
+      ],
+      "title": "Naca4Airfoil",
+      "type": "object"
+    },
+    "RakeDistribution": {
+      "additionalProperties": false,
+      "properties": {
+        "interpolation": {
+          "$ref": "#/$defs/Interpolation",
+          "description": "Backend-independent radial interpolation algorithm."
+        },
+        "points": {
+          "description": "Rake control points.",
+          "items": {
+            "$ref": "#/$defs/RakePoint"
+          },
+          "title": "Points",
+          "type": "array"
+        }
+      },
+      "required": [
+        "interpolation",
+        "points"
+      ],
+      "title": "RakeDistribution",
+      "type": "object"
+    },
+    "RakePoint": {
+      "additionalProperties": false,
+      "properties": {
+        "r_over_R": {
+          "description": "Radial station r/R.",
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "R Over R",
+          "type": "number"
+        },
+        "rake_over_R": {
+          "description": "Local axial rake divided by blade radius.",
+          "title": "Rake Over R",
+          "type": "number"
+        }
+      },
+      "required": [
+        "r_over_R",
+        "rake_over_R"
+      ],
+      "title": "RakePoint",
+      "type": "object"
+    },
+    "RotationDirection": {
+      "description": "Direction relative to the product's standard propeller-axis convention.",
+      "enum": [
+        "normal",
+        "reverse"
+      ],
+      "title": "RotationDirection",
+      "type": "string"
+    },
+    "SkewDistribution": {
+      "additionalProperties": false,
+      "properties": {
+        "interpolation": {
+          "$ref": "#/$defs/Interpolation",
+          "description": "Backend-independent radial interpolation algorithm."
+        },
+        "points": {
+          "description": "Skew control points.",
+          "items": {
+            "$ref": "#/$defs/SkewPoint"
+          },
+          "title": "Points",
+          "type": "array"
+        }
+      },
+      "required": [
+        "interpolation",
+        "points"
+      ],
+      "title": "SkewDistribution",
+      "type": "object"
+    },
+    "SkewPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "r_over_R": {
+          "description": "Radial station r/R.",
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "R Over R",
+          "type": "number"
+        },
+        "skew_over_R": {
+          "description": "Local tangential skew divided by blade radius.",
+          "title": "Skew Over R",
+          "type": "number"
+        }
+      },
+      "required": [
+        "r_over_R",
+        "skew_over_R"
+      ],
+      "title": "SkewPoint",
+      "type": "object"
+    },
+    "ThicknessDistribution": {
+      "additionalProperties": false,
+      "properties": {
+        "interpolation": {
+          "$ref": "#/$defs/Interpolation",
+          "description": "Backend-independent radial interpolation algorithm."
+        },
+        "points": {
+          "description": "Thickness-ratio control points.",
+          "items": {
+            "$ref": "#/$defs/ThicknessPoint"
+          },
+          "title": "Points",
+          "type": "array"
+        }
+      },
+      "required": [
+        "interpolation",
+        "points"
+      ],
+      "title": "ThicknessDistribution",
+      "type": "object"
+    },
+    "ThicknessPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "r_over_R": {
+          "description": "Radial station r/R.",
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "R Over R",
+          "type": "number"
+        },
+        "thickness_ratio": {
+          "description": "Local maximum thickness divided by local chord.",
+          "exclusiveMinimum": 0.0,
+          "title": "Thickness Ratio",
+          "type": "number"
+        }
+      },
+      "required": [
+        "r_over_R",
+        "thickness_ratio"
+      ],
+      "title": "ThicknessPoint",
+      "type": "object"
+    },
+    "TwistDistribution": {
+      "additionalProperties": false,
+      "properties": {
+        "interpolation": {
+          "$ref": "#/$defs/Interpolation",
+          "description": "Backend-independent radial interpolation algorithm."
+        },
+        "points": {
+          "description": "Twist control points.",
+          "items": {
+            "$ref": "#/$defs/TwistPoint"
+          },
+          "title": "Points",
+          "type": "array"
+        }
+      },
+      "required": [
+        "interpolation",
+        "points"
+      ],
+      "title": "TwistDistribution",
+      "type": "object"
+    },
+    "TwistPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "r_over_R": {
+          "description": "Radial station r/R.",
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "R Over R",
+          "type": "number"
+        },
+        "twist_deg": {
+          "description": "Local geometric blade twist in degrees.",
+          "title": "Twist Deg",
+          "type": "number"
+        }
+      },
+      "required": [
+        "r_over_R",
+        "twist_deg"
+      ],
+      "title": "TwistPoint",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Neutral engineering definition for one aerodynamic blade.",
+  "properties": {
+    "schema_version": {
+      "default": "0.1",
+      "description": "BladeSpec schema version.",
+      "enum": [
+        "0.1",
+        "0.2"
+      ],
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "name": {
+      "description": "User-facing blade design name.",
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "units": {
+      "const": "mm",
+      "description": "Explicit length system; BladeSpec uses millimeters.",
+      "title": "Units",
+      "type": "string"
+    },
+    "diameter_mm": {
+      "description": "Full propeller diameter in millimeters.",
+      "exclusiveMinimum": 0.0,
+      "title": "Diameter Mm",
+      "type": "number"
+    },
+    "root_radius_ratio": {
+      "description": "Blade aerodynamic root radius divided by radius.",
+      "exclusiveMaximum": 1.0,
+      "exclusiveMinimum": 0.0,
+      "title": "Root Radius Ratio",
+      "type": "number"
+    },
+    "reference_axis_x_over_c": {
+      "description": "Chordwise construction and pitch reference axis x/c.",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Reference Axis X Over C",
+      "type": "number"
+    },
+    "rotation_direction": {
+      "$ref": "#/$defs/RotationDirection",
+      "description": "Normal or reverse blade rotation convention."
+    },
+    "airfoil_sections": {
+      "description": "Radially ordered normalized airfoil sections.",
+      "items": {
+        "$ref": "#/$defs/AirfoilSection"
+      },
+      "minItems": 2,
+      "title": "Airfoil Sections",
+      "type": "array"
+    },
+    "chord_distribution": {
+      "$ref": "#/$defs/ChordDistribution"
+    },
+    "twist_distribution": {
+      "$ref": "#/$defs/TwistDistribution"
+    },
+    "rake_distribution": {
+      "$ref": "#/$defs/RakeDistribution"
+    },
+    "skew_distribution": {
+      "$ref": "#/$defs/SkewDistribution"
+    },
+    "thickness_distribution": {
+      "$ref": "#/$defs/ThicknessDistribution"
+    }
+  },
+  "required": [
+    "name",
+    "units",
+    "diameter_mm",
+    "root_radius_ratio",
+    "reference_axis_x_over_c",
+    "rotation_direction",
+    "airfoil_sections",
+    "chord_distribution",
+    "twist_distribution",
+    "rake_distribution",
+    "skew_distribution",
+    "thickness_distribution"
+  ],
+  "title": "BladeSpec",
+  "type": "object"
+}

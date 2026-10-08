@@ -1,0 +1,1 @@
+"""Authoritative solid-topology operations."""

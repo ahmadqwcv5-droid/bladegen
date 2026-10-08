@@ -1,0 +1,192 @@
+{
+  "schema_version": "0.2",
+  "name": "custom_blade_multi_airfoil",
+  "units": "mm",
+  "diameter_mm": 400.0,
+  "root_radius_ratio": 0.2,
+  "reference_axis_x_over_c": 0.25,
+  "rotation_direction": "normal",
+  "airfoil_sections": [
+    {
+      "r_over_R": 0.2,
+      "airfoil": {
+        "type": "naca4",
+        "code": "4415"
+      },
+      "trailing_edge_thickness_mm": 1.2
+    },
+    {
+      "r_over_R": 0.4,
+      "airfoil": {
+        "type": "naca4",
+        "code": "4412"
+      },
+      "trailing_edge_thickness_mm": 1.0
+    },
+    {
+      "r_over_R": 0.6,
+      "airfoil": {
+        "type": "naca4",
+        "code": "2412"
+      },
+      "trailing_edge_thickness_mm": 0.8
+    },
+    {
+      "r_over_R": 0.8,
+      "airfoil": {
+        "type": "naca4",
+        "code": "0012"
+      },
+      "trailing_edge_thickness_mm": 0.5
+    },
+    {
+      "r_over_R": 1.0,
+      "airfoil": {
+        "type": "naca4",
+        "code": "0010"
+      },
+      "trailing_edge_thickness_mm": 0.3
+    }
+  ],
+  "chord_distribution": {
+    "interpolation": "pchip",
+    "points": [
+      {
+        "r_over_R": 0.2,
+        "chord_over_R": 0.35
+      },
+      {
+        "r_over_R": 0.35,
+        "chord_over_R": 0.34
+      },
+      {
+        "r_over_R": 0.5,
+        "chord_over_R": 0.3
+      },
+      {
+        "r_over_R": 0.65,
+        "chord_over_R": 0.245
+      },
+      {
+        "r_over_R": 0.8,
+        "chord_over_R": 0.175
+      },
+      {
+        "r_over_R": 1.0,
+        "chord_over_R": 0.1
+      }
+    ]
+  },
+  "twist_distribution": {
+    "interpolation": "pchip",
+    "points": [
+      {
+        "r_over_R": 0.2,
+        "twist_deg": 42.0
+      },
+      {
+        "r_over_R": 0.35,
+        "twist_deg": 35.0
+      },
+      {
+        "r_over_R": 0.5,
+        "twist_deg": 29.0
+      },
+      {
+        "r_over_R": 0.65,
+        "twist_deg": 23.0
+      },
+      {
+        "r_over_R": 0.8,
+        "twist_deg": 17.0
+      },
+      {
+        "r_over_R": 1.0,
+        "twist_deg": 11.0
+      }
+    ]
+  },
+  "rake_distribution": {
+    "interpolation": "pchip",
+    "points": [
+      {
+        "r_over_R": 0.2,
+        "rake_over_R": 0.0
+      },
+      {
+        "r_over_R": 0.35,
+        "rake_over_R": 0.01
+      },
+      {
+        "r_over_R": 0.5,
+        "rake_over_R": 0.02
+      },
+      {
+        "r_over_R": 0.65,
+        "rake_over_R": 0.03
+      },
+      {
+        "r_over_R": 0.8,
+        "rake_over_R": 0.035
+      },
+      {
+        "r_over_R": 1.0,
+        "rake_over_R": 0.04
+      }
+    ]
+  },
+  "skew_distribution": {
+    "interpolation": "pchip",
+    "points": [
+      {
+        "r_over_R": 0.2,
+        "skew_over_R": 0.0
+      },
+      {
+        "r_over_R": 0.35,
+        "skew_over_R": -0.01
+      },
+      {
+        "r_over_R": 0.5,
+        "skew_over_R": -0.02
+      },
+      {
+        "r_over_R": 0.65,
+        "skew_over_R": -0.03
+      },
+      {
+        "r_over_R": 0.8,
+        "skew_over_R": -0.04
+      },
+      {
+        "r_over_R": 1.0,
+        "skew_over_R": -0.05
+      }
+    ]
+  },
+  "thickness_distribution": {
+    "interpolation": "linear",
+    "points": [
+      {
+        "r_over_R": 0.2,
+        "thickness_ratio": 0.15
+      },
+      {
+        "r_over_R": 0.4,
+        "thickness_ratio": 0.12
+      },
+      {
+        "r_over_R": 0.6,
+        "thickness_ratio": 0.12
+      },
+      {
+        "r_over_R": 0.8,
+        "thickness_ratio": 0.12
+      },
+      {
+        "r_over_R": 1.0,
+        "thickness_ratio": 0.1
+      }
+    ]
+  }
+}

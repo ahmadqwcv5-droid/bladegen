@@ -1,0 +1,16 @@
+.venv/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+backend/*.egg-info/
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+output/runs/*
+!output/runs/.gitkeep
+.vscode/
+frontend/.vite/
+frontend/_metadata.json
