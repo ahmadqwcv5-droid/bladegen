@@ -1,0 +1,224 @@
+{
+  "schema_version": "0.2",
+  "name": "sprint02_case_c_eight_section",
+  "units": "mm",
+  "diameter_mm": 400.0,
+  "root_radius_ratio": 0.18,
+  "reference_axis_x_over_c": 0.25,
+  "rotation_direction": "normal",
+  "airfoil_sections": [
+    {
+      "r_over_R": 0.18,
+      "airfoil": {
+        "type": "naca4",
+        "code": "4415"
+      },
+      "trailing_edge_thickness_mm": 1.0,
+      "thickness_override_ratio": null
+    },
+    {
+      "r_over_R": 0.28,
+      "airfoil": {
+        "type": "naca4",
+        "code": "4412"
+      },
+      "trailing_edge_thickness_mm": 0.9,
+      "thickness_override_ratio": null
+    },
+    {
+      "r_over_R": 0.4,
+      "airfoil": {
+        "type": "naca4",
+        "code": "2412"
+      },
+      "trailing_edge_thickness_mm": 0.75,
+      "thickness_override_ratio": null
+    },
+    {
+      "r_over_R": 0.51,
+      "airfoil": {
+        "type": "naca4",
+        "code": "0012"
+      },
+      "trailing_edge_thickness_mm": 0.65,
+      "thickness_override_ratio": null
+    },
+    {
+      "r_over_R": 0.63,
+      "airfoil": {
+        "type": "naca4",
+        "code": "0010"
+      },
+      "trailing_edge_thickness_mm": 0.5,
+      "thickness_override_ratio": null
+    },
+    {
+      "r_over_R": 0.76,
+      "airfoil": {
+        "type": "naca4",
+        "code": "0009"
+      },
+      "trailing_edge_thickness_mm": 0.4,
+      "thickness_override_ratio": null
+    },
+    {
+      "r_over_R": 0.88,
+      "airfoil": {
+        "type": "naca4",
+        "code": "0008"
+      },
+      "trailing_edge_thickness_mm": 0.3,
+      "thickness_override_ratio": null
+    },
+    {
+      "r_over_R": 1.0,
+      "airfoil": {
+        "type": "naca4",
+        "code": "0008"
+      },
+      "trailing_edge_thickness_mm": 0.2,
+      "thickness_override_ratio": null
+    }
+  ],
+  "chord_distribution": {
+    "interpolation": "pchip",
+    "points": [
+      {
+        "r_over_R": 0.18,
+        "chord_over_R": 0.34
+      },
+      {
+        "r_over_R": 0.34,
+        "chord_over_R": 0.335
+      },
+      {
+        "r_over_R": 0.55,
+        "chord_over_R": 0.28
+      },
+      {
+        "r_over_R": 0.72,
+        "chord_over_R": 0.21
+      },
+      {
+        "r_over_R": 0.9,
+        "chord_over_R": 0.14
+      },
+      {
+        "r_over_R": 1.0,
+        "chord_over_R": 0.09
+      }
+    ]
+  },
+  "twist_distribution": {
+    "interpolation": "pchip",
+    "points": [
+      {
+        "r_over_R": 0.18,
+        "twist_deg": 43.0
+      },
+      {
+        "r_over_R": 0.3,
+        "twist_deg": 38.0
+      },
+      {
+        "r_over_R": 0.47,
+        "twist_deg": 31.0
+      },
+      {
+        "r_over_R": 0.68,
+        "twist_deg": 23.0
+      },
+      {
+        "r_over_R": 0.84,
+        "twist_deg": 16.0
+      },
+      {
+        "r_over_R": 1.0,
+        "twist_deg": 10.0
+      }
+    ]
+  },
+  "rake_distribution": {
+    "interpolation": "pchip",
+    "points": [
+      {
+        "r_over_R": 0.18,
+        "rake_over_R": 0.0
+      },
+      {
+        "r_over_R": 0.5,
+        "rake_over_R": 0.015
+      },
+      {
+        "r_over_R": 0.75,
+        "rake_over_R": 0.03
+      },
+      {
+        "r_over_R": 1.0,
+        "rake_over_R": 0.04
+      }
+    ]
+  },
+  "skew_distribution": {
+    "interpolation": "pchip",
+    "points": [
+      {
+        "r_over_R": 0.18,
+        "skew_over_R": 0.0
+      },
+      {
+        "r_over_R": 0.38,
+        "skew_over_R": -0.008
+      },
+      {
+        "r_over_R": 0.62,
+        "skew_over_R": -0.022
+      },
+      {
+        "r_over_R": 0.82,
+        "skew_over_R": -0.04
+      },
+      {
+        "r_over_R": 1.0,
+        "skew_over_R": -0.05
+      }
+    ]
+  },
+  "thickness_distribution": {
+    "interpolation": "linear",
+    "points": [
+      {
+        "r_over_R": 0.18,
+        "thickness_ratio": 0.15
+      },
+      {
+        "r_over_R": 0.28,
+        "thickness_ratio": 0.12
+      },
+      {
+        "r_over_R": 0.4,
+        "thickness_ratio": 0.12
+      },
+      {
+        "r_over_R": 0.51,
+        "thickness_ratio": 0.12
+      },
+      {
+        "r_over_R": 0.63,
+        "thickness_ratio": 0.1
+      },
+      {
+        "r_over_R": 0.76,
+        "thickness_ratio": 0.09
+      },
+      {
+        "r_over_R": 0.88,
+        "thickness_ratio": 0.08
+      },
+      {
+        "r_over_R": 1.0,
+        "thickness_ratio": 0.08
+      }
+    ]
+  }
+}

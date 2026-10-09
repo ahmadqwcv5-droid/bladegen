@@ -18,6 +18,7 @@ TE_BLEND_START_X_OVER_C = 0.85
 def naca_4digit_coordinates(
     code: str,
     points_per_surface: int = 161,
+    thickness_ratio: float | None = None,
 ) -> tuple[list[tuple[float, float]], list[tuple[float, float]]]:
     """Return LE-to-TE upper/lower coordinates for a closed-TE NACA profile."""
     match = NACA_4_DIGIT.fullmatch(code.strip())
@@ -27,7 +28,13 @@ def naca_4digit_coordinates(
         raise ValueError("At least three points per surface are required")
     m = int(match.group(1)) / 100.0
     p = int(match.group(2)) / 10.0
-    thickness = int(match.group(3)) / 100.0
+    thickness = (
+        float(thickness_ratio)
+        if thickness_ratio is not None
+        else int(match.group(3)) / 100.0
+    )
+    if not math.isfinite(thickness) or thickness <= 0.0:
+        raise ValueError("Thickness ratio must be positive and finite")
     if m > 0.0 and p == 0.0:
         raise ValueError("Cambered NACA profile requires a nonzero camber position")
 

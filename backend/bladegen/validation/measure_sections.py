@@ -21,15 +21,7 @@ from scipy.spatial import cKDTree
 from bladegen.models import BladeSpec
 from bladegen.solid.ocp_solidify import read_step, shapes
 from bladegen.validation.expected_geometry import placed_contour, section_transform
-
-CONTROL_STATIONS = [0.20, 0.40, 0.60, 0.80, 1.00]
-INTERMEDIATE_STATIONS = [0.30, 0.50, 0.70, 0.90]
-ALL_STATIONS = sorted(CONTROL_STATIONS + INTERMEDIATE_STATIONS)
-SAMPLED_STATIONS = {0.20: 0.203, 1.00: 0.9995}
-
-
-def sampled_station(requested: float) -> float:
-    return SAMPLED_STATIONS.get(requested, requested)
+from bladegen.validation.station_plan import plan_validation_stations
 
 
 def symmetric_distances(left: np.ndarray, right: np.ndarray) -> np.ndarray:
@@ -133,8 +125,10 @@ def measure_sections(step_path: Path, spec: BladeSpec) -> list[dict]:
     solid = read_step(step_path)
     radius = spec.diameter_mm / 2.0
     records = []
-    for requested in ALL_STATIONS:
-        station = sampled_station(requested)
+    plan = plan_validation_stations(spec)
+    for planned in plan.stations:
+        requested = planned.requested_r_over_R
+        station = planned.sampled_r_over_R
         expected_contour, state, metadata = placed_contour(spec, station)
         section_shape = _section_shape(solid, radius, station)
         edges = shapes(section_shape, TopAbs_EDGE)
@@ -156,19 +150,31 @@ def measure_sections(step_path: Path, spec: BladeSpec) -> list[dict]:
         rms = float(np.sqrt(np.mean(distances * distances)))
         p95 = float(np.percentile(distances, 95))
         maximum = float(np.max(distances))
-        is_control = requested in CONTROL_STATIONS
-        source_section = min(
-            spec.airfoil_sections, key=lambda section: abs(section.r_over_R - requested)
+        is_control = "airfoil_station" in planned.roles
+        source_section = (
+            next(section for section in spec.airfoil_sections if section.r_over_R == requested)
+            if is_control
+            else None
         )
-        requested_te = source_section.trailing_edge_thickness_mm if is_control else None
+        requested_te = source_section.trailing_edge_thickness_mm if source_section else None
+        expected_te_at_sample = metadata["expected_te_mm"]
+        endpoint_inferred_te = (
+            te_gap + requested_te - expected_te_at_sample
+            if planned.endpoint and requested_te is not None
+            else None
+        )
         records.append(
             {
                 "requested_r_over_R": requested,
                 "sampled_r_over_R": station,
-                "station_kind": "control" if is_control else "intermediate",
+                "station_kind": planned.station_kind,
+                "station_roles": list(planned.roles),
+                "endpoint": planned.endpoint,
+                "sample_offset_r_over_R": planned.sample_offset_r_over_R,
+                "direct_endpoint_measurement": planned.endpoint is None,
                 "airfoil_code": (
                     source_section.airfoil.code
-                    if is_control and source_section.airfoil.type == "naca4"
+                    if source_section and source_section.airfoil.type == "naca4"
                     else ""
                 ),
                 "left_profile_r_over_R": metadata["left_profile_r_over_R"],
@@ -185,16 +191,19 @@ def measure_sections(step_path: Path, spec: BladeSpec) -> list[dict]:
                 "twist_absolute_error_deg": twist_error,
                 "reference_axis_position_error_mm": axis_error,
                 "requested_te_mm": requested_te,
-                "diagnostic_expected_te_mm": metadata["expected_te_mm"],
+                "diagnostic_expected_te_mm": expected_te_at_sample,
+                "expected_te_at_sample_mm": expected_te_at_sample,
                 "measured_te_mm": te_gap,
-                "te_absolute_error_mm": (
-                    abs(te_gap - requested_te) if requested_te is not None else None
-                ),
+                "te_absolute_error_mm": abs(te_gap - expected_te_at_sample),
                 "te_relative_error": (
-                    abs(te_gap - requested_te) / requested_te
-                    if requested_te not in (None, 0.0)
+                    abs(te_gap - expected_te_at_sample) / expected_te_at_sample
+                    if expected_te_at_sample != 0.0
                     else 0.0
-                    if requested_te == 0.0
+                ),
+                "inferred_endpoint_te_mm": endpoint_inferred_te,
+                "inferred_endpoint_te_error_mm": (
+                    abs(endpoint_inferred_te - requested_te)
+                    if endpoint_inferred_te is not None and requested_te is not None
                     else None
                 ),
                 "measured_max_thickness_over_chord": thickness_ratio,
@@ -208,9 +217,7 @@ def measure_sections(step_path: Path, spec: BladeSpec) -> list[dict]:
                 "contour_rms_pass": rms <= (0.03 if is_control else 0.05),
                 "contour_p95_pass": p95 <= (0.06 if is_control else 0.10),
                 "contour_max_pass": maximum <= (0.12 if is_control else 0.20),
-                "te_pass": (
-                    abs(te_gap - requested_te) <= 0.02 if requested_te is not None else True
-                ),
+                "te_pass": abs(te_gap - expected_te_at_sample) <= 0.02,
             }
         )
     return records

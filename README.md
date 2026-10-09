@@ -9,8 +9,10 @@ derived STL, and downloads STEP and validation artifacts.
 ## Supported scope
 
 - One blade; NACA 4-digit or coordinate profiles.
+- Dynamic airfoil stations plus independently editable distribution controls.
 - Independent chord, twist, rake, skew, and thickness station grids.
 - Physical finite trailing-edge thickness with measured tolerance reporting.
+- BladeSpec JSON new/open/export/reset and stale-build snapshot tracking.
 - One valid closed STEP solid, OCP preview STL, and machine-readable validation.
 
 Not yet included: multi-blade assemblies, manufacturing hubs, aero analysis,
@@ -27,7 +29,7 @@ cd frontend && npm install && cd ..
 ```
 
 Set `OPENVSP_ROOT` to the unpacked official OpenVSP distribution. The scripts
-also detect this machine.s `/tmp/openvsp_root/opt/OpenVSP` installation.
+also detect this machine's `/tmp/openvsp_root/opt/OpenVSP` installation.
 
 ## Run
 
@@ -45,7 +47,7 @@ CLI build:
 
 ```bash
 OPENVSP_ROOT=/tmp/openvsp_root/opt/OpenVSP LD_LIBRARY_PATH=/tmp/cminpack_root/usr/lib/x86_64-linux-gnu .venv/bin/bladegen build \
-  examples/x57_finite_te_multi_airfoil.json --output output/manual
+  examples/custom_multi_airfoil_finite_te.json --output output/manual
 ```
 
 Tests and production UI build:
@@ -54,6 +56,12 @@ Tests and production UI build:
 ./scripts/test_backend.sh
 cd frontend && npm run build
 ```
+
+Sprint 02 reproducible CAD examples are in `examples/sprint02_case_a_three_section.json`,
+`examples/custom_multi_airfoil_finite_te.json`, and
+`examples/sprint02_case_c_eight_section.json`. See the
+[Sprint 02 report](docs/SPRINT_02_REPORT.md) and
+[acceptance matrix](docs/SPRINT_02_ACCEPTANCE_MATRIX.md) for measured results.
 
 ## Limitations and licensing
 

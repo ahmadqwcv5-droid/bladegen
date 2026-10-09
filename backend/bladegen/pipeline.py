@@ -121,8 +121,8 @@ def _validation_rows(result: dict) -> list[dict]:
     return rows
 
 
-def _geometry_summary(records: list[dict]) -> dict:
-    controls = [row for row in records if row["station_kind"] == "control"]
+def _geometry_summary(records: list[dict], spec: BladeSpec) -> dict:
+    controls = [row for row in records if "airfoil_station" in row["station_roles"]]
     required = (
         "chord_pass",
         "twist_pass",
@@ -132,10 +132,15 @@ def _geometry_summary(records: list[dict]) -> dict:
         "contour_max_pass",
         "te_pass",
     )
-    root = next(row for row in controls if row["requested_r_over_R"] == 0.20)
-    tip = next(row for row in controls if row["requested_r_over_R"] == 1.00)
+    root = next(row for row in records if row["endpoint"] == "root")
+    tip = next(row for row in records if row["endpoint"] == "tip")
     return {
-        "method": "OCP plane sections of newly re-imported final STEP",
+        "method": "BladeSpec-driven OCP plane sections of newly re-imported final STEP",
+        "root_r_over_R": spec.root_radius_ratio,
+        "tip_r_over_R": 1.0,
+        "station_count": len(records),
+        "airfoil_station_count": len(spec.airfoil_sections),
+        "endpoint_policy": "inward CAD cuts; expected geometry evaluated at sampled radius",
         "passed": all(all(row[key] for key in required) for row in records),
         "stations": records,
         "max_chord_error_mm": max(row["chord_absolute_error_mm"] for row in records),
@@ -146,7 +151,7 @@ def _geometry_summary(records: list[dict]) -> dict:
         "control_contour_rms_max_mm": max(row["contour_rms_mm"] for row in controls),
         "control_contour_p95_max_mm": max(row["contour_p95_mm"] for row in controls),
         "control_contour_max_mm": max(row["contour_max_mm"] for row in controls),
-        "max_te_error_mm": max(row["te_absolute_error_mm"] for row in controls),
+        "max_te_error_mm": max(row["te_absolute_error_mm"] for row in records),
         "root_measurement": {
             "requested_r_over_R": root["requested_r_over_R"],
             "measured_r_over_R": root["sampled_r_over_R"],
@@ -179,7 +184,7 @@ def build(
     write_stl(read_step(solid_path), preview_path)
     spec_copy = output_dir / "blade_spec.json"
     shutil.copyfile(spec_path, spec_copy)
-    geometry_validation = _geometry_summary(measure_sections(solid_path, spec))
+    geometry_validation = _geometry_summary(measure_sections(solid_path, spec), spec)
     if not geometry_validation["passed"]:
         raise RuntimeError(
             f"Independent final-solid geometry validation failed: {geometry_validation}"

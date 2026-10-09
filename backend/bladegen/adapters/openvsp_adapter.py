@@ -169,6 +169,7 @@ def _configure_sections(vsp: ModuleType, prop_id: str, resolved: ResolvedBladeSp
         if not radius_id:
             raise RuntimeError("OpenVSP XSec RadiusFrac parameter unavailable")
         vsp.SetParmVal(radius_id, section.r_over_R)
+        vsp.Update()
         for key, value in neutral_modifiers.items():
             parm_id = parameters.get(key)
             if parm_id:
@@ -304,7 +305,11 @@ def readback_bladespec(vsp: ModuleType, prop_id: str, name: str, schema_version:
         "name": name,
         "units": "mm",
         "diameter_mm": _get(vsp, prop_id, "Diameter", "Design") * MM_PER_INCH,
-        "root_radius_ratio": _get(vsp, prop_id, "AFLimit", "Design"),
+        # AFLimit is clamped to 0.20 by OpenVSP 3.54.0 and therefore cannot
+        # represent valid blades whose first section lies further inboard.
+        # RadiusFrac on the first XSec is the authoritative geometric root.
+        "root_radius_ratio": sections[0]["r_over_R"],
+        "openvsp_airfoil_limit": _get(vsp, prop_id, "AFLimit", "Design"),
         "reference_axis_x_over_c": _get(vsp, prop_id, "ConstructXoC", "Design"),
         "rotation_direction": (
             "reverse" if round(_get(vsp, prop_id, "ReverseFlag", "Design")) else "normal"

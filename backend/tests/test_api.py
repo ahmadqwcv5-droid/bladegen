@@ -9,14 +9,14 @@ client = TestClient(app)
 
 
 def example():
-    response = client.get("/api/examples/x57_finite_te_multi_airfoil")
+    response = client.get("/api/examples/custom_multi_airfoil_finite_te")
     assert response.status_code == 200
     return response.json()
 
 
 def test_health_and_example_loading():
     assert client.get("/api/health").json()["status"] == "ok"
-    assert client.get("/api/examples").json()[0]["id"] == "x57_finite_te_multi_airfoil"
+    assert client.get("/api/examples").json()[0]["id"] == "custom_multi_airfoil_finite_te"
     assert example()["schema_version"] == "0.2"
 
 
