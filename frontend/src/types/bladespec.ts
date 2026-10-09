@@ -15,4 +15,13 @@ export type BladeSpec = {
   thickness_distribution: Distribution
 }
 export type Artifact = { name: string; size_bytes: number; download_url: string }
-export type Job = { job_id: string; status: 'queued'|'running'|'succeeded'|'failed'; error?: string }
+export type Job = {
+  job_id: string
+  status: 'queued'|'running'|'succeeded'|'failed'
+  stage: string
+  stage_label: string
+  progress_percent: number
+  message: string
+  elapsed_seconds: number
+  error?: string | null
+}

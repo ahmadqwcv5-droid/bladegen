@@ -8,7 +8,6 @@ import pytest
 from bladegen.models import BladeSpec
 from bladegen.pipeline import build
 
-
 ROOT = Path(__file__).resolve().parents[2]
 CASES = (
     ("sprint02_case_a_three_section.json", 3, 0.25),

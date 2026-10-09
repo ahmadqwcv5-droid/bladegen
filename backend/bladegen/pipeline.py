@@ -11,6 +11,7 @@ from pathlib import Path
 from bladegen.adapters.openvsp_adapter import HIDDEN_ADAPTER_DEFAULTS, build_and_export
 from bladegen.curves.resolver import resolve_blade_spec
 from bladegen.models import BladeSpec
+from bladegen.progress import ProgressReporter, ProgressState
 from bladegen.solid.ocp_solidify import read_step, solidify_step, write_stl
 from bladegen.validation.geometry_validation import compare_steps, validate_openvsp_readback
 from bladegen.validation.measure_sections import measure_sections
@@ -131,6 +132,9 @@ def _geometry_summary(records: list[dict], spec: BladeSpec) -> dict:
         "contour_p95_pass",
         "contour_max_pass",
         "te_pass",
+        "wire_count_pass",
+        "wire_valid_pass",
+        "wire_closed_pass",
     )
     root = next(row for row in records if row["endpoint"] == "root")
     tip = next(row for row in records if row["endpoint"] == "tip")
@@ -167,21 +171,66 @@ def build(
     spec_path: Path,
     output_dir: Path,
     regression_reference_step: Path | None = None,
+    progress_path: Path | None = None,
 ) -> dict:
+    progress = ProgressReporter(progress_path)
+    progress.report(
+        ProgressState("validation", "Validating BladeSpec", 0, "Checking the input contract")
+    )
     spec = BladeSpec.from_json(spec_path)
+    progress.report(
+        ProgressState(
+            "resolution",
+            "Resolving blade definition",
+            5,
+            "BladeSpec validated; resolving canonical curves and airfoils",
+        )
+    )
     resolved = resolve_blade_spec(spec)
     output_dir.mkdir(parents=True, exist_ok=True)
     resolved_path = output_dir / "resolved_blade_spec.json"
     resolved_path.write_text(resolved.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    progress.report(
+        ProgressState(
+            "openvsp",
+            "Generating blade surfaces",
+            18,
+            "OpenVSP is constructing and exporting the blade surfaces",
+        )
+    )
     adapter = build_and_export(resolved, output_dir)
     readback = validate_openvsp_readback(resolved, adapter.readback)
     if not readback["passed"]:
         raise RuntimeError(f"OpenVSP readback validation failed: {readback}")
+    progress.report(
+        ProgressState(
+            "solidification",
+            "Creating validated solid STEP",
+            52,
+            "OpenVSP surfaces exported; OpenCascade is sewing and solidifying",
+        )
+    )
 
     solid_path = output_dir / "blade_solid.step"
     solidification = solidify_step(adapter.step_path, solid_path)
+    progress.report(
+        ProgressState(
+            "preview",
+            "Generating preview mesh",
+            72,
+            "Valid solid STEP completed; generating the OCP-derived STL preview",
+        )
+    )
     preview_path = output_dir / "blade_preview.stl"
     write_stl(read_step(solid_path), preview_path)
+    progress.report(
+        ProgressState(
+            "geometry_validation",
+            "Validating final STEP geometry",
+            80,
+            "Preview completed; measuring independent final-STEP sections",
+        )
+    )
     spec_copy = output_dir / "blade_spec.json"
     shutil.copyfile(spec_path, spec_copy)
     geometry_validation = _geometry_summary(measure_sections(solid_path, spec), spec)
@@ -189,6 +238,14 @@ def build(
         raise RuntimeError(
             f"Independent final-solid geometry validation failed: {geometry_validation}"
         )
+    progress.report(
+        ProgressState(
+            "artifacts",
+            "Writing validation artifacts",
+            95,
+            "Independent geometry validation passed; writing reports",
+        )
+    )
     result = {
         "status": "PASS",
         "bladespec": {
@@ -258,4 +315,12 @@ def build(
         )
         writer.writeheader()
         writer.writerows(rows)
+    progress.report(
+        ProgressState(
+            "complete",
+            "Build complete",
+            100,
+            "Validated STEP, preview, and validation artifacts are ready",
+        )
+    )
     return result

@@ -40,13 +40,20 @@ def test_job_lifecycle_artifacts_and_failure(monkeypatch, tmp_path):
     monkeypatch.setattr(blades.jobs, "_run", successful_run)
     response = client.post("/api/build", json=example())
     assert response.status_code == 202
-    job_id = response.json()["job_id"]
+    accepted = response.json()
+    assert accepted["status"] == "queued"
+    assert accepted["stage"] == "queued"
+    assert accepted["progress_percent"] == 0
+    assert accepted["elapsed_seconds"] >= 0
+    job_id = accepted["job_id"]
     for _ in range(50):
         status = client.get(f"/api/jobs/{job_id}").json()["status"]
         if status == "succeeded":
             break
         time.sleep(0.01)
     assert status == "succeeded"
+    payload = client.get(f"/api/jobs/{job_id}").json()
+    assert {"stage", "stage_label", "progress_percent", "message", "elapsed_seconds"} <= payload.keys()
     artifacts = client.get(f"/api/jobs/{job_id}/artifacts").json()
     assert {item["name"] for item in artifacts} >= {
         "blade_solid.step",
