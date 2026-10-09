@@ -63,7 +63,15 @@ def validate_spec(payload: dict) -> dict:
 def build(payload: dict) -> BuildAccepted:
     validate_spec(payload)
     job = jobs.submit(payload)
-    return BuildAccepted(job_id=job.job_id, status="queued")
+    return BuildAccepted(
+        job_id=job.job_id,
+        status="queued",
+        stage="queued",
+        stage_label="Queued",
+        progress_percent=0,
+        message="Waiting for the CAD worker",
+        elapsed_seconds=job.elapsed_seconds,
+    )
 
 
 @router.get("/jobs/{job_id}", response_model=JobStatus)
@@ -71,7 +79,16 @@ def job_status(job_id: str) -> JobStatus:
     job = jobs.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
-    return JobStatus(job_id=job.job_id, status=job.status, error=job.error)
+    return JobStatus(
+        job_id=job.job_id,
+        status=job.status,
+        stage=job.stage,
+        stage_label=job.stage_label,
+        progress_percent=job.progress_percent,
+        message=job.message,
+        elapsed_seconds=job.elapsed_seconds,
+        error=job.error,
+    )
 
 
 @router.get("/jobs/{job_id}/artifacts", response_model=list[Artifact])

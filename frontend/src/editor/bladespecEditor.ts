@@ -125,8 +125,26 @@ export function validateEditorSpec(spec:BladeSpec):string[] {
   return errors
 }
 
+function isRecord(value:unknown):value is Record<string,unknown> { return typeof value==='object' && value!==null && !Array.isArray(value) }
+function finite(value:unknown):value is number { return typeof value==='number' && Number.isFinite(value) }
+function pointArray(value:unknown):boolean { return Array.isArray(value) && value.length>=2 && value.every(point=>Array.isArray(point) && point.length===2 && point.every(finite)) }
+
 export function parseBladeSpec(text:string):BladeSpec {
-  const value=JSON.parse(text) as BladeSpec
-  if (!value || !Array.isArray(value.airfoil_sections)) throw new Error('File is not a BladeSpec JSON document')
-  return value
+  const value:unknown=JSON.parse(text)
+  if (!isRecord(value)) throw new Error('File is not a BladeSpec JSON object')
+  if (!['0.1','0.2'].includes(String(value.schema_version))) throw new Error('Unsupported BladeSpec schema_version')
+  if (typeof value.name!=='string' || value.units!=='mm' || !finite(value.diameter_mm) || !finite(value.root_radius_ratio) || !finite(value.reference_axis_x_over_c) || !['normal','reverse'].includes(String(value.rotation_direction))) throw new Error('BladeSpec global fields are missing or invalid')
+  if (!Array.isArray(value.airfoil_sections) || value.airfoil_sections.length<2) throw new Error('BladeSpec requires at least two airfoil sections')
+  for (const candidate of value.airfoil_sections) {
+    if (!isRecord(candidate) || !finite(candidate.r_over_R) || !finite(candidate.trailing_edge_thickness_mm) || !isRecord(candidate.airfoil)) throw new Error('Invalid airfoil section structure')
+    const airfoil=candidate.airfoil
+    if (airfoil.type==='naca4') { if (typeof airfoil.code!=='string') throw new Error('NACA airfoil code must be a string') }
+    else if (airfoil.type==='coordinates') { if (!pointArray(airfoil.upper) || !pointArray(airfoil.lower)) throw new Error('Coordinate airfoil surfaces must contain finite [x, y] points') }
+    else throw new Error('Unsupported airfoil type')
+  }
+  for (const key of ['chord_distribution','twist_distribution','rake_distribution','skew_distribution','thickness_distribution']) {
+    const distribution=value[key]
+    if (!isRecord(distribution) || !['linear','pchip'].includes(String(distribution.interpolation)) || !Array.isArray(distribution.points) || distribution.points.length<2 || !distribution.points.every(point=>isRecord(point) && finite(point.r_over_R))) throw new Error('Invalid '+key+' structure')
+  }
+  return value as unknown as BladeSpec
 }

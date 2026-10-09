@@ -16,13 +16,18 @@ def main() -> int:
     build_parser.add_argument("spec", type=Path)
     build_parser.add_argument("--output", type=Path, default=Path("output"))
     build_parser.add_argument(
+        "--progress-file",
+        type=Path,
+        help="Optional atomic progress JSON path for an external job supervisor.",
+    )
+    build_parser.add_argument(
         "--reference-step",
         type=Path,
         help="Optional regression reference; not part of BladeSpec or production generation.",
     )
     args = parser.parse_args()
 
-    result = build(args.spec, args.output, args.reference_step)
+    result = build(args.spec, args.output, args.reference_step, args.progress_file)
     summary = {
         "status": result["status"],
         "solid": result["solidification"]["solid_after_reimport"],

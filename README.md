@@ -43,6 +43,16 @@ In separate terminals:
 Open `http://127.0.0.1:5173`. Build jobs are serialized and isolated in child
 processes. Outputs live under `output/runs/<job_id>/`.
 
+During generation, the page shows backend-confirmed CAD stages, percentage, and
+elapsed time. The numeric percentage advances only when a pipeline milestone has
+completed. A failed job retains its last confirmed stage while the most recent
+successful preview and artifacts keep their original job identity.
+
+The normal solid viewer occupies roughly 45% of the desktop workspace. Use
+**Expand Viewer** for the large inspection mode; orbit, pan, zoom, Fit to Model,
+Isometric, Front, and Side controls remain available. Press Escape or
+**Restore Viewer** to return without reloading the STL.
+
 CLI build:
 
 ```bash
@@ -50,18 +60,23 @@ OPENVSP_ROOT=/tmp/openvsp_root/opt/OpenVSP LD_LIBRARY_PATH=/tmp/cminpack_root/us
   examples/custom_multi_airfoil_finite_te.json --output output/manual
 ```
 
-Tests and production UI build:
+Tests, production UI build, and browser acceptance:
 
 ```bash
 ./scripts/test_backend.sh
-cd frontend && npm run build
+cd frontend
+npm test
+npm run build
+npx playwright install chromium  # first browser-test setup only
+npm run test:e2e
 ```
 
 Sprint 02 reproducible CAD examples are in `examples/sprint02_case_a_three_section.json`,
 `examples/custom_multi_airfoil_finite_te.json`, and
 `examples/sprint02_case_c_eight_section.json`. See the
-[Sprint 02 report](docs/SPRINT_02_REPORT.md) and
-[acceptance matrix](docs/SPRINT_02_ACCEPTANCE_MATRIX.md) for measured results.
+[Sprint 02 report](docs/SPRINT_02_REPORT.md),
+[acceptance matrix](docs/SPRINT_02_ACCEPTANCE_MATRIX.md), and
+[Sprint 02.1 reliability report](docs/SPRINT_02_1_REPORT.md) for measured results.
 
 ## Limitations and licensing
 
