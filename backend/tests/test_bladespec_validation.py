@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from bladegen.models import BladeSpec
 
-SPEC = Path(__file__).resolve().parents[2] / "examples/x57_finite_te_multi_airfoil.json"
+SPEC = Path(__file__).resolve().parents[2] / "examples/custom_multi_airfoil_finite_te.json"
 
 
 def raw_spec() -> dict:

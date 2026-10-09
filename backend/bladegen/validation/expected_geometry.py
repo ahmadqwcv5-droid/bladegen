@@ -43,10 +43,16 @@ def evaluate_state(spec: BladeSpec, station: float) -> SectionState:
     )
 
 
-def naca_coordinates(code: str, count: int = 161) -> tuple[np.ndarray, np.ndarray]:
+def naca_coordinates(
+    code: str, count: int = 161, effective_thickness_ratio: float | None = None
+) -> tuple[np.ndarray, np.ndarray]:
     m = int(code[0]) / 100.0
     p = int(code[1]) / 10.0
-    thickness = int(code[2:]) / 100.0
+    thickness = (
+        effective_thickness_ratio
+        if effective_thickness_ratio is not None
+        else int(code[2:]) / 100.0
+    )
     beta = np.linspace(0.0, np.pi, count)
     x = 0.5 * (1.0 - np.cos(beta))
     yt = (
@@ -76,9 +82,11 @@ def naca_coordinates(code: str, count: int = 161) -> tuple[np.ndarray, np.ndarra
     return upper, lower
 
 
-def _base_profile(section) -> tuple[np.ndarray, np.ndarray]:
+def _base_profile(section, effective_thickness_ratio: float) -> tuple[np.ndarray, np.ndarray]:
     if section.airfoil.type == "naca4":
-        return naca_coordinates(section.airfoil.code)
+        return naca_coordinates(
+            section.airfoil.code, effective_thickness_ratio=effective_thickness_ratio
+        )
     return (
         np.asarray(section.airfoil.upper, dtype=float),
         np.asarray(section.airfoil.lower, dtype=float),
@@ -86,10 +94,11 @@ def _base_profile(section) -> tuple[np.ndarray, np.ndarray]:
 
 
 def resolved_control_profile(spec: BladeSpec, section) -> tuple[np.ndarray, np.ndarray]:
-    upper, lower = _base_profile(section)
+    state = evaluate_state(spec, section.r_over_R)
+    upper, lower = _base_profile(section, state.thickness_ratio)
     if section.trailing_edge_thickness_mm is None:
         return upper, lower
-    chord = evaluate_state(spec, section.r_over_R).chord_mm
+    chord = state.chord_mm
     target = section.trailing_edge_thickness_mm / chord
     existing = upper[-1, 1] - lower[-1, 1]
     delta = target - existing

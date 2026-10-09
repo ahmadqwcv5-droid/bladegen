@@ -1,0 +1,135 @@
+{
+  "schema_version": "0.2",
+  "name": "sprint02_naca0008_thickness_override",
+  "units": "mm",
+  "diameter_mm": 400.0,
+  "root_radius_ratio": 0.25,
+  "reference_axis_x_over_c": 0.25,
+  "rotation_direction": "normal",
+  "airfoil_sections": [
+    {
+      "r_over_R": 0.25,
+      "airfoil": {
+        "type": "naca4",
+        "code": "0008"
+      },
+      "trailing_edge_thickness_mm": 0.6,
+      "thickness_override_ratio": 0.1
+    },
+    {
+      "r_over_R": 0.625,
+      "airfoil": {
+        "type": "naca4",
+        "code": "0008"
+      },
+      "trailing_edge_thickness_mm": 0.45,
+      "thickness_override_ratio": 0.1
+    },
+    {
+      "r_over_R": 1.0,
+      "airfoil": {
+        "type": "naca4",
+        "code": "0008"
+      },
+      "trailing_edge_thickness_mm": 0.3,
+      "thickness_override_ratio": 0.1
+    }
+  ],
+  "chord_distribution": {
+    "interpolation": "pchip",
+    "points": [
+      {
+        "r_over_R": 0.25,
+        "chord_over_R": 0.32
+      },
+      {
+        "r_over_R": 0.45,
+        "chord_over_R": 0.3
+      },
+      {
+        "r_over_R": 0.72,
+        "chord_over_R": 0.2
+      },
+      {
+        "r_over_R": 1.0,
+        "chord_over_R": 0.1
+      }
+    ]
+  },
+  "twist_distribution": {
+    "interpolation": "pchip",
+    "points": [
+      {
+        "r_over_R": 0.25,
+        "twist_deg": 34.0
+      },
+      {
+        "r_over_R": 0.5,
+        "twist_deg": 28.0
+      },
+      {
+        "r_over_R": 0.8,
+        "twist_deg": 18.0
+      },
+      {
+        "r_over_R": 1.0,
+        "twist_deg": 10.0
+      }
+    ]
+  },
+  "rake_distribution": {
+    "interpolation": "linear",
+    "points": [
+      {
+        "r_over_R": 0.25,
+        "rake_over_R": 0.0
+      },
+      {
+        "r_over_R": 0.7,
+        "rake_over_R": 0.02
+      },
+      {
+        "r_over_R": 1.0,
+        "rake_over_R": 0.03
+      }
+    ]
+  },
+  "skew_distribution": {
+    "interpolation": "linear",
+    "points": [
+      {
+        "r_over_R": 0.25,
+        "skew_over_R": 0.0
+      },
+      {
+        "r_over_R": 0.55,
+        "skew_over_R": -0.01
+      },
+      {
+        "r_over_R": 0.85,
+        "skew_over_R": -0.03
+      },
+      {
+        "r_over_R": 1.0,
+        "skew_over_R": -0.04
+      }
+    ]
+  },
+  "thickness_distribution": {
+    "interpolation": "linear",
+    "points": [
+      {
+        "r_over_R": 0.25,
+        "thickness_ratio": 0.1
+      },
+      {
+        "r_over_R": 0.55,
+        "thickness_ratio": 0.1
+      },
+      {
+        "r_over_R": 1.0,
+        "thickness_ratio": 0.1
+      }
+    ]
+  }
+}

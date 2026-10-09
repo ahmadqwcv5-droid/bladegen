@@ -16,7 +16,7 @@ from bladegen.curves.resolver import resolve_blade_spec
 from bladegen.models import BladeSpec
 
 ROOT = Path(__file__).resolve().parents[2]
-FINITE_SPEC = ROOT / "examples/x57_finite_te_multi_airfoil.json"
+FINITE_SPEC = ROOT / "examples/custom_multi_airfoil_finite_te.json"
 
 
 @pytest.mark.parametrize(

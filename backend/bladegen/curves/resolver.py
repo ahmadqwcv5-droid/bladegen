@@ -183,7 +183,12 @@ def resolve_airfoil_sections(spec: BladeSpec) -> tuple[ResolvedAirfoilSection, .
                     f"{actual_ratio:.6f}, inconsistent with {choice}; update the curve "
                     "or declare thickness_override_ratio."
                 )
-            upper, lower = naca_4digit_coordinates(section.airfoil.code)
+            # Resolve the effective section geometry before handing it to a CAD
+            # backend. This prevents OpenVSP from scaling finite TE gaps when a
+            # NACA thickness override differs from the nominal code.
+            upper, lower = naca_4digit_coordinates(
+                section.airfoil.code, thickness_ratio=actual_ratio
+            )
         else:
             upper = list(section.airfoil.upper)
             lower = list(section.airfoil.lower)

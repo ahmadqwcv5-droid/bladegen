@@ -7,7 +7,7 @@ from bladegen.pipeline import build
 from bladegen.solid.ocp_solidify import inspect_shape, read_step
 from bladegen.validation.measure_sections import measure_sections
 
-EXAMPLE = Path(__file__).resolve().parents[2] / "examples/x57_finite_te_multi_airfoil.json"
+EXAMPLE = Path(__file__).resolve().parents[2] / "examples/custom_multi_airfoil_finite_te.json"
 
 
 @pytest.mark.integration

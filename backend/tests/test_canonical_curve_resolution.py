@@ -7,7 +7,7 @@ from bladegen.curves.canonical import evaluate_curve
 from bladegen.curves.resolver import resolve_blade_spec, tolerance_profile
 from bladegen.models import BladeSpec
 
-CUSTOM_SPEC = Path(__file__).resolve().parents[2] / "examples/x57_finite_te_multi_airfoil.json"
+CUSTOM_SPEC = Path(__file__).resolve().parents[2] / "examples/custom_multi_airfoil_finite_te.json"
 
 
 @pytest.fixture(scope="module")
