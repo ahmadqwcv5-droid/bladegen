@@ -1,15 +1,19 @@
 # Architecture
 
 ```text
-React editor/viewer
-       │ HTTP BladeSpec v0.2
-FastAPI ── single-worker queue ── isolated Python subprocess
-                                      │
-BladeSpec → canonical resolver → OpenVSP PROP/STEP faces
-                                      │
-                              OCP sew/make solid
-                                      │
-                         qualify → STEP + STL + JSON
+Local airfoil registry ── catalog/import ─┐
+                                         v
+React editor ── BladeSpec v0.2 ── FastAPI design preview
+     │                                   │
+     │                     canonical airfoils + SciPy curves
+     │                                   │
+     └── Generate ── single-worker queue ─┴─ isolated Python subprocess
+                                                │
+          BladeSpec → canonical resolver → OpenVSP PROP/STEP faces
+                                                │
+                                        OCP sew/make solid
+                                                │
+                                   qualify → STEP + STL + JSON
 ```
 
 `backend/bladegen/models` is the neutral contract. `curves` and `airfoils` own
@@ -20,15 +24,23 @@ active CAD subprocess, applies a configurable timeout (`BLADEGEN_BUILD_TIMEOUT`,
 default 300 s), and serves only allow-listed artifacts. No product module imports
 from `00_research_archive`.
 
-Future airfoil-library adapters can provide parametric families, named profiles,
-or imported DAT/CSV coordinates with metadata/provenance while still resolving
-to the current neutral coordinate representation.
+The file-backed Airfoil Library lives outside BladeSpec. Parametric NACA entries
+call the canonical generator; imported DAT/CSV profiles are validated into the
+existing neutral coordinate representation and stored atomically under
+`user_data/airfoils` (or `BLADEGEN_AIRFOIL_LIBRARY`). Selecting one copies exact
+coordinates into BladeSpec, so CAD rebuilds never depend on registry state.
 
-The React editor owns only transient row identities and numeric input drafts;
-serialized projects remain pure BladeSpec v0.2. At submission it freezes a
-canonical JSON snapshot and binds artifacts to the returned job ID. Comparing
-the live editor with that snapshot drives the stale-preview state, and an older
-poll response cannot replace a newer active job.
+The design-preview API is a non-CAD read model over the canonical Python source
+of truth. It returns resolved source/finite-TE contours and SciPy-evaluated
+distribution samples in engineering display units. React debounces and cancels
+requests and rejects stale revisions. It does not duplicate NACA or PCHIP
+mathematics and never starts OpenVSP or writes STEP/STL artifacts.
+
+The React editor owns only transient row identities, profile display names, and
+numeric input drafts; serialized projects remain pure BladeSpec v0.2. At
+submission it freezes a canonical JSON snapshot and binds artifacts to the
+returned job ID. Comparing the live editor with that snapshot drives the stale-
+preview state, and an older poll response cannot replace a newer active job.
 
 Final-CAD stations are planned from each submitted BladeSpec: explicit airfoil
 stations, adjacent profile-morphing midpoints, and the union of independent

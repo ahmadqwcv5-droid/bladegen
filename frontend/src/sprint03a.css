@@ -1,0 +1,59 @@
+.station-table-scroll { overflow-x: auto; }
+.station-profile { min-width: 11rem; }
+.station-profile-name { display: block; margin-bottom: .35rem; font-weight: 700; }
+.station-profile-actions { display: flex; flex-wrap: wrap; gap: .35rem; }
+.station-profile-actions button { padding: 6px 8px; }
+
+.airfoil-inspector { padding: 14px; border: 1px solid #d7e0e2; border-radius: 5px; background: #f9fbfb; }
+.airfoil-inspector h3 { margin: .15rem 0; }
+.airfoil-inspector .eyebrow { margin: 0; font-size: .68rem; }
+.airfoil-plot { display: block; width: 100%; min-height: 180px; max-height: 300px; margin-top: 10px; overflow: visible; background: #fff; border: 1px solid #dbe3e5; }
+.airfoil-upper,.airfoil-lower { fill: none; stroke-width: .004; vector-effect: non-scaling-stroke; }
+.airfoil-upper { stroke: #bb5b32; }
+.airfoil-lower { stroke: #25657a; }
+.plot-axis { stroke: #263a42; stroke-width: .002; vector-effect: non-scaling-stroke; }
+.plot-grid { stroke: #b9c6ca; stroke-width: .001; stroke-dasharray: .015 .015; vector-effect: non-scaling-stroke; }
+.leading-edge,.trailing-edge { fill: #172f39; stroke: #fff; stroke-width: .002; }
+.axis-labels { display: flex; justify-content: space-between; color: #566a72; font-size: .72rem; }
+.inspector-metrics { grid-template-columns: max-content 1fr; margin-bottom: .4rem; }
+.view-tabs,.distribution-tabs { display: flex; flex-wrap: wrap; gap: .35rem; }
+.view-tabs button,.distribution-tabs button { padding: 7px 9px; }
+.view-tabs button[aria-pressed="true"],.distribution-tabs button[aria-pressed="true"] { border-color: #bb5b32; background: #f3ded4; color: #552311; }
+
+.selector-backdrop { position: fixed; inset: 0; z-index: 1200; padding: 20px; overflow: auto; background: rgb(6 14 18 / 82%); }
+.airfoil-selector { width: min(1280px, 100%); min-height: min(760px, calc(100vh - 40px)); margin: auto; padding: 22px; border-radius: 6px; background: #fff; box-shadow: 0 20px 80px #000; }
+.selector-layout { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr); gap: 18px; }
+.catalog-panel { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.catalog-list { display: flex; flex-direction: column; gap: 5px; max-height: 280px; overflow-y: auto; }
+.catalog-list button { display: flex; justify-content: space-between; gap: .5rem; text-align: left; }
+.catalog-list button.selected { border-color: #bb5b32; background: #fff3ed; }
+.direct-naca { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 8px; padding-top: 8px; border-top: 1px solid #d8e1e3; }
+.import-panel { padding: 10px; border: 1px solid #d8e1e3; }
+.import-panel label { margin-top: 9px; }
+.import-panel textarea { min-height: 60px; resize: vertical; }
+.import-panel button { margin-top: 10px; }
+.selector-preview { min-width: 0; }
+.selector-preview .primary { float: right; margin-top: 10px; }
+.resolution-note { padding: 10px; border-left: 4px solid #bb5b32; background: #fff4ef; }
+.checksum { max-width: 34rem; overflow-wrap: anywhere; font-family: ui-monospace, monospace; font-size: .72rem; }
+
+.distribution-visual { margin-bottom: 14px; padding: 14px; border: 1px solid #d8e1e3; background: #f9fbfb; }
+.distribution-tabs { margin-bottom: 10px; }
+.distribution-chart svg { display: block; width: 100%; max-height: 300px; background: #fff; border: 1px solid #dbe3e5; }
+.distribution-chart h3 { margin: 0; }
+.distribution-chart .section-title span { color: #52666e; font-size: .8rem; font-weight: 700; }
+.chart-axis { stroke: #344950; stroke-width: 1.2; }
+.chart-line { fill: none; stroke: #bb5b32; stroke-width: 3; stroke-linejoin: round; }
+.chart-control { fill: #fff; stroke: #174d61; stroke-width: 3; }
+.chart-hover line { stroke: #667b83; stroke-dasharray: 4 4; }
+.chart-hover circle { fill: #bb5b32; }
+.distribution-chart text { fill: #52666e; font-size: 12px; }
+.chart-readout,.chart-loading { min-height: 1.5rem; color: #536970; font-size: .8rem; }
+.design-preview-state { margin: 8px 0; font-size: .78rem; color: #52666e; }
+
+@media (max-width: 800px) {
+  .selector-layout { grid-template-columns: 1fr; }
+  .selector-backdrop { padding: 8px; }
+  .airfoil-selector { min-height: calc(100vh - 16px); padding: 14px; }
+  .airfoil-inspector .section-title { align-items: flex-start; flex-direction: column; }
+}

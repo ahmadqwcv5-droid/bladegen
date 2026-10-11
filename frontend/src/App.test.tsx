@@ -11,6 +11,7 @@ const api = vi.hoisted(() => ({
   build: vi.fn(),
   getJob: vi.fn(),
   getArtifacts: vi.fn(),
+  getDesignPreview: vi.fn(),
 }))
 vi.mock('./api/client', () => api)
 vi.mock('./components/BladeViewer', () => ({
@@ -63,6 +64,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   api.getExample.mockResolvedValue(structuredClone(example))
   api.validate.mockResolvedValue({ valid: true })
+  api.getDesignPreview.mockResolvedValue({ stations: [], distributions: {} })
   api.build.mockResolvedValue(makeJob(idA, 'queued'))
   api.getJob.mockResolvedValue(makeJob(idA, 'succeeded'))
   api.getArtifacts.mockImplementation(async (id: string) => [
