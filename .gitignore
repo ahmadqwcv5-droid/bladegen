@@ -16,3 +16,4 @@ output/runs/*
 .vscode/
 frontend/.vite/
 frontend/_metadata.json
+user_data/airfoils/

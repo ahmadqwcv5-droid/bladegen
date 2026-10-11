@@ -1,8 +1,10 @@
 export type Point = { r_over_R: number; [key: string]: number }
 export type Distribution = { interpolation: 'linear' | 'pchip'; points: Point[] }
+export type CoordinateAirfoil = { type: 'coordinates'; upper: number[][]; lower: number[][] }
+export type NacaAirfoil = { type: 'naca4'; code: string }
 export type AirfoilSection = {
   r_over_R: number
-  airfoil: { type: 'naca4'; code: string } | { type: 'coordinates'; upper: number[][]; lower: number[][] }
+  airfoil: NacaAirfoil | CoordinateAirfoil
   trailing_edge_thickness_mm: number
   thickness_override_ratio?: number | null
 }
@@ -24,4 +26,65 @@ export type Job = {
   message: string
   elapsed_seconds: number
   error?: string | null
+}
+
+export type AirfoilMetrics = {
+  max_thickness_ratio: number
+  max_thickness_x_over_c: number
+  max_camber_ratio: number
+  max_camber_x_over_c: number
+  trailing_edge_gap_ratio: number
+}
+
+export type AirfoilCatalogItem = {
+  profile_id: string
+  display_name: string
+  category: 'naca4' | 'imported'
+  source: string
+  license: string
+  point_counts: { upper: number; lower: number }
+  metrics: AirfoilMetrics
+  original_filename?: string
+  import_format?: string
+  canonical_coordinate_sha256?: string
+  notes?: string | null
+  normalization?: string
+  airfoil?: NacaAirfoil | CoordinateAirfoil
+}
+
+export type AirfoilProfile = AirfoilCatalogItem & {
+  airfoil: NacaAirfoil | CoordinateAirfoil
+  source_coordinates?: CoordinateAirfoil
+}
+
+export type PreviewProfile = {
+  upper: number[][]
+  lower: number[][]
+  metrics: AirfoilMetrics
+}
+
+export type PreviewStation = {
+  r_over_R: number
+  name: string
+  kind: 'naca4' | 'coordinates'
+  local_chord_mm: number
+  nominal_thickness_ratio: number
+  effective_thickness_ratio: number
+  requested_trailing_edge_thickness_mm: number
+  source: PreviewProfile
+  resolved: PreviewProfile
+  preview_status: string
+}
+
+export type DistributionPreview = {
+  interpolation: 'linear' | 'pchip'
+  unit: string
+  samples: number[][]
+  controls: number[][]
+}
+
+export type DesignPreview = {
+  schema_version: '1'
+  stations: PreviewStation[]
+  distributions: Record<'chord' | 'twist' | 'rake' | 'skew' | 'thickness', DistributionPreview>
 }

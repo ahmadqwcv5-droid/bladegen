@@ -11,6 +11,7 @@ const api = vi.hoisted(() => ({
   build: vi.fn(),
   getJob: vi.fn(),
   getArtifacts: vi.fn(),
+  getDesignPreview: vi.fn(),
 }))
 vi.mock('./api/client', () => api)
 vi.mock('./components/BladeViewer', () => ({
@@ -24,6 +25,7 @@ afterEach(() => cleanup())
 beforeEach(() => {
   vi.clearAllMocks()
   api.validate.mockResolvedValue({ valid: true })
+  api.getDesignPreview.mockResolvedValue({ stations: [], distributions: {} })
   vi.stubGlobal('confirm', vi.fn(() => true))
   vi.stubGlobal('crypto', { randomUUID: vi.fn(() => Math.random().toString(36)) })
 })

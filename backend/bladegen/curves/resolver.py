@@ -13,6 +13,7 @@ from bladegen.airfoils.canonical import (
     naca_4digit_coordinates,
     trailing_edge_gap_normalized,
 )
+from bladegen.airfoils.geometry_metrics import measure_airfoil
 from bladegen.curves.canonical import curve_data, evaluate_curve
 from bladegen.models.blade_spec import AirfoilCoordinates, BladeSpec, Interpolation
 from bladegen.models.resolved_blade_spec import (
@@ -192,6 +193,17 @@ def resolve_airfoil_sections(spec: BladeSpec) -> tuple[ResolvedAirfoilSection, .
         else:
             upper = list(section.airfoil.upper)
             lower = list(section.airfoil.lower)
+            natural_ratio = measure_airfoil(upper, lower).max_thickness_ratio
+            actual_ratio = evaluate_curve(
+                spec.thickness_distribution, section.r_over_R, "thickness_ratio"
+            )
+            if not math.isclose(actual_ratio, natural_ratio, abs_tol=1e-4):
+                raise ValueError(
+                    f"Thickness distribution at r/R={section.r_over_R:g} is "
+                    f"{actual_ratio:.6f}, inconsistent with imported coordinate "
+                    f"profile geometric thickness {natural_ratio:.6f}; coordinate the "
+                    "active thickness control before CAD generation."
+                )
         if section.trailing_edge_thickness_mm is None:
             resolved_upper, resolved_lower = upper, lower
             requested_mm = trailing_edge_gap_normalized(upper, lower) * chord_mm

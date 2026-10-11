@@ -8,7 +8,8 @@ derived STL, and downloads STEP and validation artifacts.
 
 ## Supported scope
 
-- One blade; NACA 4-digit or coordinate profiles.
+- One blade; searchable parametric NACA and persistent imported DAT/CSV coordinate profiles.
+- Canonical source/resolved 2D airfoil inspection and backend-sampled engineering charts.
 - Dynamic airfoil stations plus independently editable distribution controls.
 - Independent chord, twist, rake, skew, and thickness station grids.
 - Physical finite trailing-edge thickness with measured tolerance reporting.
@@ -40,7 +41,13 @@ In separate terminals:
 ./scripts/start_frontend.sh
 ```
 
-Open `http://127.0.0.1:5173`. Build jobs are serialized and isolated in child
+Open `http://127.0.0.1:5173`. Use **Choose from Library** at any airfoil
+station to search NACA profiles or import DAT/CSV coordinates. Imported geometry is
+embedded in exported BladeSpec JSON; local metadata persists under
+`user_data/airfoils/`. See [Airfoil Library](docs/AIRFOIL_LIBRARY.md) and
+[Import Formats](docs/AIRFOIL_IMPORT_FORMATS.md).
+
+Build jobs are serialized and isolated in child
 processes. Outputs live under `output/runs/<job_id>/`.
 
 During generation, the page shows backend-confirmed CAD stages, percentage, and
@@ -81,7 +88,9 @@ Sprint 02 reproducible CAD examples are in `examples/sprint02_case_a_three_secti
 [acceptance matrix](docs/SPRINT_02_ACCEPTANCE_MATRIX.md), and
 [Sprint 02.1 reliability report](docs/SPRINT_02_1_REPORT.md) for measured results.
 The focused null/progress/camera corrections are documented in the
-[Patch 02.1.1 report](docs/PATCH_02_1_1_REPORT.md).
+[Patch 02.1.1 report](docs/PATCH_02_1_1_REPORT.md). Sprint 03A visual design
+and imported-profile CAD results are in the [Sprint 03A report](docs/SPRINT_03A_REPORT.md)
+and [acceptance matrix](docs/SPRINT_03A_ACCEPTANCE_MATRIX.md).
 
 ## Limitations and licensing
 
