@@ -1,0 +1,22 @@
+.curve { min-width: 0; }
+.distribution-table-scroll { width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
+.distribution-table { min-width: 25rem; }
+.distribution-table th:first-child,
+.distribution-table td:first-child { min-width: 7rem; }
+.distribution-table th:nth-child(2),
+.distribution-table td:nth-child(2) { min-width: 8rem; }
+.distribution-table input {
+  min-width: 6.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.distribution-table button { white-space: nowrap; }
+
+.viewer-tools button[aria-pressed="true"] {
+  border-color: #e28a62;
+  background: #f3ded4;
+  color: #552311;
+}
+
+@media (max-width: 520px) {
+  .distribution-table { min-width: 23rem; }
+}

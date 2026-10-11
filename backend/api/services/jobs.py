@@ -83,12 +83,18 @@ class JobManager:
         progress = read_progress(job.output_dir / PROGRESS_FILENAME)
         if progress is None or not 0 <= progress.progress_percent <= 100:
             return
-        if progress.progress_percent < job.progress_percent:
+        public_percent = min(progress.progress_percent, 95)
+        if public_percent < job.progress_percent:
             return
-        job.stage = progress.stage
-        job.stage_label = progress.stage_label
-        job.progress_percent = progress.progress_percent
-        job.message = progress.message
+        if progress.progress_percent > 95:
+            job.stage = "confirmation"
+            job.stage_label = "Awaiting build confirmation"
+            job.message = "Pipeline work finished; waiting for the CAD worker to confirm success"
+        else:
+            job.stage = progress.stage
+            job.stage_label = progress.stage_label
+            job.message = progress.message
+        job.progress_percent = public_percent
 
     def _fail(self, job: Job, error: str) -> None:
         self._refresh_progress(job)

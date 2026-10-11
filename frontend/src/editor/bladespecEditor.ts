@@ -67,8 +67,14 @@ export function changeRootRadius(spec: BladeSpec, radius: number): BladeSpec {
 
 function nominal(code:string):number { return Number(code.slice(2))/100 }
 
+export function hasThicknessOverride(section: AirfoilSection): section is AirfoilSection & { thickness_override_ratio: number } {
+  return typeof section.thickness_override_ratio === 'number' && Number.isFinite(section.thickness_override_ratio)
+}
+
 export function effectiveThickness(spec:BladeSpec, section:AirfoilSection):number {
-  return section.thickness_override_ratio ?? evaluateDistribution(spec.thickness_distribution,'thickness_ratio',section.r_over_R)
+  return hasThicknessOverride(section)
+    ? section.thickness_override_ratio
+    : evaluateDistribution(spec.thickness_distribution,'thickness_ratio',section.r_over_R)
 }
 
 export function setThicknessOverride(spec:BladeSpec,index:number,ratio:number):BladeSpec {
@@ -81,11 +87,26 @@ export function setThicknessOverride(spec:BladeSpec,index:number,ratio:number):B
   return {...spec,thickness_distribution:thickness,airfoil_sections:spec.airfoil_sections.map((section,i)=>i===index?{...section,thickness_override_ratio:ratio}:section)}
 }
 
+export function clearThicknessOverride(spec: BladeSpec, index: number): BladeSpec {
+  const section = spec.airfoil_sections[index]
+  const { thickness_override_ratio: _, ...withoutOverride } = section
+  let next = {
+    ...spec,
+    airfoil_sections: spec.airfoil_sections.map((value, current) => (
+      current === index ? withoutOverride : value
+    )),
+  }
+  if (withoutOverride.airfoil.type === "naca4") {
+    next = coordinateNacaThickness(next, index, withoutOverride.airfoil.code)
+  }
+  return next
+}
+
 export function coordinateNacaThickness(spec:BladeSpec,index:number,code:string):BladeSpec {
   if (!/^\d{4}$/.test(code)) return {...spec,airfoil_sections:spec.airfoil_sections.map((s,i)=>i===index?{...s,airfoil:{type:'naca4',code}}:s)}
   const section=spec.airfoil_sections[index], ratio=nominal(code)
   let thickness=spec.thickness_distribution
-  if (section.thickness_override_ratio===undefined) {
+  if (!hasThicknessOverride(section)) {
     const exact=thickness.points.findIndex(p=>Math.abs(p.r_over_R-section.r_over_R)<=EPS)
     thickness=exact>=0?updateControlPoint(thickness,exact,{thickness_ratio:ratio}):addControlPoint(thickness,'thickness_ratio',section.r_over_R)
     if (exact<0) { const inserted=thickness.points.findIndex(p=>Math.abs(p.r_over_R-section.r_over_R)<=EPS); thickness=updateControlPoint(thickness,inserted,{thickness_ratio:ratio}) }
@@ -120,7 +141,7 @@ export function validateEditorSpec(spec:BladeSpec):string[] {
   if (spec.airfoil_sections.at(-1)?.r_over_R!==1) errors.push('The tip airfoil station must remain at r/R=1.0')
   for (const section of spec.airfoil_sections) if (section.airfoil.type==='naca4') {
     if (!/^\d{4}$/.test(section.airfoil.code)) errors.push(`Invalid NACA code at r/R=${section.r_over_R}`)
-    else if (section.thickness_override_ratio===undefined && Math.abs(effectiveThickness(spec,section)-nominal(section.airfoil.code))>1e-6) errors.push(`Thickness at r/R=${section.r_over_R} does not match NACA ${section.airfoil.code}; coordinate the curve or enable an override`)
+    else if (!hasThicknessOverride(section) && Math.abs(effectiveThickness(spec,section)-nominal(section.airfoil.code))>1e-6) errors.push(`Thickness at r/R=${section.r_over_R} does not match NACA ${section.airfoil.code}; coordinate the curve or enable an override`)
   }
   return errors
 }

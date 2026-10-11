@@ -317,10 +317,10 @@ def build(
         writer.writerows(rows)
     progress.report(
         ProgressState(
-            "complete",
-            "Build complete",
-            100,
-            "Validated STEP, preview, and validation artifacts are ready",
+            "confirmation",
+            "Awaiting build confirmation",
+            95,
+            "Required artifacts are written; waiting for the CAD worker to confirm success",
         )
     )
     return result

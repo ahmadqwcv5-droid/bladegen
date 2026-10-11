@@ -4,7 +4,7 @@ export type AirfoilSection = {
   r_over_R: number
   airfoil: { type: 'naca4'; code: string } | { type: 'coordinates'; upper: number[][]; lower: number[][] }
   trailing_edge_thickness_mm: number
-  thickness_override_ratio?: number
+  thickness_override_ratio?: number | null
 }
 export type BladeSpec = {
   schema_version: '0.1' | '0.2'; name: string; units: 'mm'; diameter_mm: number

@@ -7,9 +7,11 @@ import { NumericInput } from './components/NumericInput'
 import {
   addAirfoilStation,
   canonicalJson,
+  clearThicknessOverride,
   changeRootRadius,
   coordinateNacaThickness,
   effectiveThickness,
+  hasThicknessOverride,
   parseBladeSpec,
   removeAirfoilStation,
   setThicknessOverride,
@@ -19,6 +21,7 @@ import type { AirfoilSection, Artifact, BladeSpec, Distribution, Job } from './t
 import './styles.css'
 import './sprint02.css'
 import './sprint02_1.css'
+import './patch02_1_1.css'
 
 const curves: [keyof BladeSpec, string, string][] = [
   ['chord_distribution', 'Chord', 'chord_over_R'],
@@ -187,7 +190,7 @@ export default function App() {
       )),
     }
     const section = next.airfoil_sections[index]
-    if (section.airfoil.type === 'naca4' && section.thickness_override_ratio === undefined) {
+    if (section.airfoil.type === 'naca4' && !hasThicknessOverride(section)) {
       next = coordinateNacaThickness(next, index, section.airfoil.code)
     }
     update(next)
@@ -227,17 +230,7 @@ export default function App() {
       update(setThicknessOverride(spec, index, effectiveThickness(spec, section)))
       return
     }
-    const { thickness_override_ratio: _, ...withoutOverride } = section
-    let next = {
-      ...spec,
-      airfoil_sections: spec.airfoil_sections.map((value, current) => (
-        current === index ? withoutOverride : value
-      )),
-    }
-    if (withoutOverride.airfoil.type === 'naca4') {
-      next = coordinateNacaThickness(next, index, withoutOverride.airfoil.code)
-    }
-    update(next)
+    update(clearThicknessOverride(spec, index))
   }
   const submit = async () => {
     if (submissionPending.current || busy) return
@@ -399,8 +392,8 @@ export default function App() {
                   <td><NumericInput label={`TE thickness ${index + 1}`} step=".1" value={section.trailing_edge_thickness_mm} onCommit={value => updateSection(index, { trailing_edge_thickness_mm: value })} /></td>
                   <td>{effectiveThickness(spec, section).toFixed(4)}</td>
                   <td>
-                    <label className="inline"><input type="checkbox" checked={section.thickness_override_ratio !== undefined} onChange={event => toggleOverride(index, event.target.checked)} /> explicit</label>
-                    {section.thickness_override_ratio !== undefined && <NumericInput label={`Thickness override ${index + 1}`} step=".01" value={section.thickness_override_ratio} onCommit={value => update(setThicknessOverride(spec, index, value))} />}
+                    <label className="inline"><input type="checkbox" checked={hasThicknessOverride(section)} onChange={event => toggleOverride(index, event.target.checked)} /> explicit</label>
+                    {hasThicknessOverride(section) && <NumericInput label={`Thickness override ${index + 1}`} step=".01" value={section.thickness_override_ratio} onCommit={value => update(setThicknessOverride(spec, index, value))} />}
                   </td>
                   <td><button disabled={index === 0 || index === spec.airfoil_sections.length - 1} onClick={() => removeStation(index)}>Remove</button></td>
                 </tr>
