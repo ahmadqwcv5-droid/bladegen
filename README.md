@@ -44,7 +44,9 @@ In separate terminals:
 Open `http://127.0.0.1:5173`. Use **Choose from Library** at any airfoil
 station to search NACA profiles or import DAT/CSV coordinates. Imported geometry is
 embedded in exported BladeSpec JSON; local metadata persists under
-`user_data/airfoils/`. See [Airfoil Library](docs/AIRFOIL_LIBRARY.md) and
+`user_data/airfoils/`. Sparse coordinate definitions receive a non-blocking
+pre-generation warning; the original coordinates are preserved and final STEP
+validation remains authoritative. See [Airfoil Library](docs/AIRFOIL_LIBRARY.md) and
 [Import Formats](docs/AIRFOIL_IMPORT_FORMATS.md).
 
 Build jobs are serialized and isolated in child
@@ -102,4 +104,4 @@ must be reviewed for the intended distribution. No PropGen or other third-party
 application source was copied.
 
 See [architecture](docs/ARCHITECTURE.md), [geometry conventions](docs/GEOMETRY_CONVENTIONS.md),
-and [validation policy](docs/VALIDATION_POLICY.md).
+[validation policy](docs/VALIDATION_POLICY.md), and the [Patch 03A.1 engineering report](docs/PATCH_03A_1_REPORT.md).

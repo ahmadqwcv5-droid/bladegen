@@ -42,6 +42,9 @@ def test_imported_non_naca_profile_generates_valid_faithful_step(tmp_path: Path)
     assert imported_row["contour_rms_pass"]
     assert imported_row["contour_p95_pass"]
     assert imported_row["contour_max_pass"]
+    assert imported_row["production_contour_policy"]["name"] == "production_control_section_gate"
+    assert imported_row["imported_profile_acceptance"]["policy"]["name"] == "imported_profile_acceptance_target"
+    assert imported_row["imported_profile_acceptance"]["passed"]
     assert imported_row["measured_max_thickness_over_chord"] == pytest.approx(
         imported.metrics.max_thickness_ratio, abs=0.002
     )

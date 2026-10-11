@@ -68,8 +68,10 @@ an independent five-point-per-surface contour retained 11% thickness but
 OpenVSP's smooth surface representation differed by up to `0.493 mm` from the
 piecewise-linear canonical expectation. No tolerance was weakened. The final
 acceptance fixture is an independently specified analytic contour with 41
-committed points per surface. It passed the unchanged `0.050 mm` maximum contour
-gate at `0.036200 mm`. This is source-definition density, not downstream
+committed points per surface. It passed the additional imported-profile `0.050 mm` maximum acceptance target
+at `0.036200 mm`, as well as the historical `0.120 mm` production control-section
+maximum gate. Sprint 03A originally mislabeled the stricter target as the
+production gate; Patch 03A.1 corrects that wording without changing either value. This is source-definition density, not downstream
 resampling of a user upload.
 
 See [the acceptance matrix](SPRINT_03A_ACCEPTANCE_MATRIX.md) for all measured

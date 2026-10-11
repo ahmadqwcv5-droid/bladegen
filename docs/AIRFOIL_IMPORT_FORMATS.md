@@ -74,3 +74,16 @@ unchanged.
 Historical multi-block formats, Lednicer two-table DAT variants, automatic
 database downloads, and heuristic recovery of malformed contours are outside
 Sprint 03A.
+
+## Coordinate-quality advisory
+
+Imported and standalone embedded-coordinate profiles are screened before Generate. A
+non-blocking warning appears when either surface has fewer than 25 points, maximum
+adjacent chordwise spacing exceeds `0.10 c`, or either surface has fewer than three
+points in the leading-edge region `x/c <= 0.10`. The warning reports point counts and
+maximum spacing.
+
+These are conservative source-density heuristics, not proof of OpenVSP or manufacturing
+accuracy. BladeGen does not insert points, smooth, refit, rescale, or reject a profile
+because of this advisory. The supplied neutral coordinates remain unchanged and final
+OCP measurements of the generated STEP remain authoritative.

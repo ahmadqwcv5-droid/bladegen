@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from bladegen.airfoils.canonical import naca_4digit_coordinates
+from bladegen.airfoils.diagnostics import coordinate_profile_diagnostics
 from bladegen.airfoils.geometry_metrics import measure_airfoil
 from bladegen.airfoils.importers import ImportedAirfoil
 
@@ -50,6 +51,16 @@ def _naca_record(code: str, *, include_coordinates: bool) -> dict:
             "lower": lower,
         }
     return record
+
+
+def _with_coordinate_diagnostics(record: dict) -> dict:
+    airfoil = record.get("airfoil", {})
+    if airfoil.get("type") != "coordinates":
+        return record
+    return {
+        **record,
+        "diagnostics": coordinate_profile_diagnostics(airfoil["upper"], airfoil["lower"]),
+    }
 
 
 class AirfoilLibrary:
@@ -99,7 +110,8 @@ class AirfoilLibrary:
         if not path.is_file():
             raise KeyError(profile_id)
         try:
-            return json.loads(path.read_text(encoding="utf-8"))
+            record = json.loads(path.read_text(encoding="utf-8"))
+            return _with_coordinate_diagnostics(record)
         except (OSError, json.JSONDecodeError) as exc:
             raise RuntimeError(f"Imported profile {profile_id} is unreadable") from exc
 
@@ -120,6 +132,7 @@ class AirfoilLibrary:
         canonical_sha = canonical_coordinate_sha256(airfoil)
         profile_id = f"imported-{imported.original_sha256[:12]}-{canonical_sha[:8]}"
         safe_original = Path(original_filename).name[:255]
+        diagnostics = coordinate_profile_diagnostics(airfoil["upper"], airfoil["lower"])
         metadata = {
             "profile_id": profile_id,
             "display_name": name,
@@ -135,6 +148,7 @@ class AirfoilLibrary:
                 "lower": len(imported.airfoil.lower),
             },
             "metrics": imported.metrics.to_dict(),
+            "diagnostics": diagnostics,
             "notes": (notes or "").strip() or None,
             "normalization": imported.normalization,
             "created_at": datetime.now(UTC).isoformat(),
