@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import ValidationError
 
 from bladegen.airfoils.canonical import naca_4digit_coordinates
+from bladegen.airfoils.diagnostics import coordinate_profile_diagnostics
 from bladegen.airfoils.geometry_metrics import measure_airfoil
 from bladegen.airfoils.importers import import_airfoil
 from bladegen.airfoils.library import AirfoilLibrary
@@ -62,6 +63,7 @@ async def upload_airfoil(
 
 
 def _profile_payload(section, resolved_section, spec: BladeSpec) -> dict:
+    diagnostics = None
     if section.airfoil.type == "naca4":
         source_upper, source_lower = naca_4digit_coordinates(section.airfoil.code)
         name = f"NACA {section.airfoil.code}"
@@ -70,6 +72,7 @@ def _profile_payload(section, resolved_section, spec: BladeSpec) -> dict:
         source_upper, source_lower = section.airfoil.upper, section.airfoil.lower
         name = "Imported coordinate profile"
         nominal = measure_airfoil(source_upper, source_lower).max_thickness_ratio
+        diagnostics = coordinate_profile_diagnostics(source_upper, source_lower)
     effective = evaluate_curve(
         spec.thickness_distribution, section.r_over_R, "thickness_ratio"
     )
@@ -95,6 +98,7 @@ def _profile_payload(section, resolved_section, spec: BladeSpec) -> dict:
                 resolved_section.airfoil.upper, resolved_section.airfoil.lower
             ).to_dict(),
         },
+        "diagnostics": diagnostics,
         "preview_status": "canonical design definition; final CAD validation not yet performed",
     }
 

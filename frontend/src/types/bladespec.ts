@@ -36,6 +36,18 @@ export type AirfoilMetrics = {
   trailing_edge_gap_ratio: number
 }
 
+export type ProfileDiagnostics = {
+  upper_point_count: number
+  lower_point_count: number
+  maximum_chordwise_spacing: number
+  upper_leading_edge_point_count: number
+  lower_leading_edge_point_count: number
+  warning_codes: string[]
+  warnings: string[]
+  has_warning: boolean
+  advisory: string
+}
+
 export type AirfoilCatalogItem = {
   profile_id: string
   display_name: string
@@ -44,6 +56,7 @@ export type AirfoilCatalogItem = {
   license: string
   point_counts: { upper: number; lower: number }
   metrics: AirfoilMetrics
+  diagnostics?: ProfileDiagnostics
   original_filename?: string
   import_format?: string
   canonical_coordinate_sha256?: string
@@ -73,6 +86,7 @@ export type PreviewStation = {
   requested_trailing_edge_thickness_mm: number
   source: PreviewProfile
   resolved: PreviewProfile
+  diagnostics?: ProfileDiagnostics | null
   preview_status: string
 }
 

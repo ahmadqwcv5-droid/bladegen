@@ -2,7 +2,7 @@
 
 Measured on 2026-10-11 with OpenVSP 3.54.0 and
 cadquery-ocp/OpenCascade 7.9.3.1. CAD values come from fresh final STEP
-re-imports during the 76-test backend run.
+re-imports during the 92-test backend run.
 
 | Case | Solid / shell / free edges | Closed / BRep valid | Volume mm³ | Chord max mm | Twist max deg | Axis max mm | TE max mm | Contour max mm |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -12,9 +12,12 @@ re-imports during the 76-test backend run.
 | NACA 0008 effective t/c 0.10 | 1 / 1 / 0 | true / true | 24,135.299077 | 0.002337 | 0.001784 | 0.000102 | 0.002047 | 0.016613 |
 | Imported analytic profile at r/R 0.60 | 1 / 1 / 0 | true / true | 38,264.318717 | 0.004043 | 0.001593 | 0.004526 | 0.016732 | 0.036200 |
 
-All five cases passed unchanged limits: chord/axis `0.05 mm`, twist `0.05°`,
-physical TE `0.020 mm`, control contour RMS `0.020 mm`, P95 `0.040 mm`, and
-maximum `0.050 mm`. The largest STEP round-trip volume delta was
+All five cases passed the unchanged production gates: chord/axis `0.050 mm`, twist
+`0.050°`, physical TE `0.020 mm`, control-station contour RMS `0.030 mm`,
+P95 `0.060 mm`, and maximum `0.120 mm`; intermediate-station contour RMS
+`0.050 mm`, P95 `0.100 mm`, and maximum `0.200 mm`. The imported analytic
+fixture additionally passed the separate imported-profile acceptance target of
+RMS `0.020 mm`, P95 `0.040 mm`, and maximum `0.050 mm`. The largest STEP round-trip volume delta was
 `6.985e-9 mm³`.
 
 ## Imported station fidelity
@@ -39,8 +42,8 @@ At final STEP r/R `0.60`, the imported station measured:
 | Section wire | valid and closed |
 
 The resolved canonical TE operation produced exactly the requested `0.8 mm`
-mathematically. The measured final profile stayed within the existing contour
-gate and was not replaced by a NACA section or unexpectedly thickness-scaled.
+mathematically. The measured final profile stayed within both the historical production control-section
+gate and the additional imported-profile acceptance target and was not replaced by a NACA section or unexpectedly thickness-scaled.
 
 ## Feature verification
 

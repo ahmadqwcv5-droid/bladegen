@@ -349,6 +349,7 @@ export default function App() {
   const solid = displayedResult?.validation_data?.solidification.solid_after_reimport
   const geometry = displayedResult?.validation_data?.geometry_validation
   const selectedPreview = designPreview?.stations[selectedStation]
+  const profileWarnings = designPreview?.stations.filter(station => station.diagnostics?.has_warning) ?? []
   const activeCurve = curves.find(([, , , name]) => name === activeDistribution)!
 
   return (
@@ -418,6 +419,7 @@ export default function App() {
             </table></div>
             <p className="hint">Library selections embed exact coordinates in BladeSpec. Physical trailing-edge thickness remains an independent millimeter requirement.</p>
             <p className="design-preview-state">{designPreviewLoading ? 'Updating canonical design preview…' : designPreviewError ? `Preview unavailable for current draft: ${designPreviewError}` : 'Canonical design preview is current; no OpenVSP process was run.'}</p>
+            {profileWarnings.length > 0 && <div className="profile-quality-warning" role="status" aria-label="Design coordinate diagnostic summary"><strong>Coordinate profile warnings</strong><ul>{profileWarnings.map(station => <li key={station.r_over_R}>r/R {station.r_over_R.toFixed(4)}: {station.diagnostics?.advisory}</li>)}</ul></div>}
             {selectedPreview && <AirfoilInspector station={selectedPreview} />}
           </section>
 

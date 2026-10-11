@@ -21,6 +21,16 @@ from scipy.spatial import cKDTree
 from bladegen.models import BladeSpec
 from bladegen.solid.ocp_solidify import read_step, shapes
 from bladegen.validation.expected_geometry import placed_contour, section_transform
+from bladegen.validation.policy import (
+    CHORD_ERROR_MAX_MM,
+    IMPORTED_PROFILE_ACCEPTANCE_TARGET,
+    PRODUCTION_CONTROL_CONTOUR,
+    PRODUCTION_INTERMEDIATE_CONTOUR,
+    REFERENCE_AXIS_ERROR_MAX_MM,
+    TRAILING_EDGE_ERROR_MAX_MM,
+    TWIST_ERROR_MAX_DEG,
+    contour_passes,
+)
 from bladegen.validation.station_plan import plan_validation_stations
 
 
@@ -158,6 +168,15 @@ def measure_sections(step_path: Path, spec: BladeSpec) -> list[dict]:
         )
         requested_te = source_section.trailing_edge_thickness_mm if source_section else None
         expected_te_at_sample = metadata["expected_te_mm"]
+        production_policy = (
+            PRODUCTION_CONTROL_CONTOUR if is_control else PRODUCTION_INTERMEDIATE_CONTOUR
+        )
+        production_contour = contour_passes(rms, p95, maximum, production_policy)
+        imported_acceptance = (
+            contour_passes(rms, p95, maximum, IMPORTED_PROFILE_ACCEPTANCE_TARGET)
+            if source_section is not None and source_section.airfoil.type == "coordinates"
+            else None
+        )
         endpoint_inferred_te = (
             te_gap + requested_te - expected_te_at_sample
             if planned.endpoint and requested_te is not None
@@ -214,13 +233,15 @@ def measure_sections(step_path: Path, spec: BladeSpec) -> list[dict]:
                 "contour_rms_mm": rms,
                 "contour_p95_mm": p95,
                 "contour_max_mm": maximum,
-                "chord_pass": chord_error <= 0.05,
-                "twist_pass": twist_error <= 0.05,
-                "reference_axis_pass": axis_error <= 0.05,
-                "contour_rms_pass": rms <= (0.03 if is_control else 0.05),
-                "contour_p95_pass": p95 <= (0.06 if is_control else 0.10),
-                "contour_max_pass": maximum <= (0.12 if is_control else 0.20),
-                "te_pass": abs(te_gap - expected_te_at_sample) <= 0.02,
+                "production_contour_policy": production_policy.as_dict(),
+                "imported_profile_acceptance": imported_acceptance,
+                "chord_pass": chord_error <= CHORD_ERROR_MAX_MM,
+                "twist_pass": twist_error <= TWIST_ERROR_MAX_DEG,
+                "reference_axis_pass": axis_error <= REFERENCE_AXIS_ERROR_MAX_MM,
+                "contour_rms_pass": production_contour["rms_pass"],
+                "contour_p95_pass": production_contour["p95_pass"],
+                "contour_max_pass": production_contour["maximum_pass"],
+                "te_pass": abs(te_gap - expected_te_at_sample) <= TRAILING_EDGE_ERROR_MAX_MM,
             }
         )
     return records
