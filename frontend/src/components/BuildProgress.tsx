@@ -16,6 +16,7 @@ function failureCategory(stage: string): string {
 
 export function BuildProgress({ job }: { job?: Job }) {
   if (!job) return null
+  const displayedProgress = job.status === 'succeeded' ? 100 : Math.min(job.progress_percent, 95)
   return (
     <section className={`build-progress ${job.status}`} aria-live="polite">
       <div className="build-progress-heading">
@@ -23,7 +24,7 @@ export function BuildProgress({ job }: { job?: Job }) {
           <p className="eyebrow">Generating Blade</p>
           <h2>{job.stage_label}</h2>
         </div>
-        <strong>{job.progress_percent}%</strong>
+        <strong>{displayedProgress}%</strong>
       </div>
       <div
         className="progress-track"
@@ -31,9 +32,9 @@ export function BuildProgress({ job }: { job?: Job }) {
         aria-label="Blade generation progress"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={job.progress_percent}
+        aria-valuenow={displayedProgress}
       >
-        <span style={{ width: `${job.progress_percent}%` }} />
+        <span style={{ width: `${displayedProgress}%` }} />
       </div>
       <dl>
         <dt>Status</dt><dd>{job.status}</dd>

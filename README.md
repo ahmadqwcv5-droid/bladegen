@@ -45,13 +45,16 @@ processes. Outputs live under `output/runs/<job_id>/`.
 
 During generation, the page shows backend-confirmed CAD stages, percentage, and
 elapsed time. The numeric percentage advances only when a pipeline milestone has
-completed. A failed job retains its last confirmed stage while the most recent
-successful preview and artifacts keep their original job identity.
+completed. The CAD subprocess reports at most 95%; only the job manager sets
+100% after a zero exit code and required-artifact checks confirm success. A failed
+job retains its last confirmed stage while the most recent successful preview and
+artifacts keep their original job identity.
 
 The normal solid viewer occupies roughly 45% of the desktop workspace. Use
 **Expand Viewer** for the large inspection mode; orbit, pan, zoom, Fit to Model,
-Isometric, Front, and Side controls remain available. Press Escape or
-**Restore Viewer** to return without reloading the STL.
+Blade Face, Blade Edge, and Isometric controls remain available. Blade Face is
+the default and is derived from the loaded mesh to reveal its broad surface.
+Press Escape or **Restore Viewer** to return without reloading the STL.
 
 CLI build:
 
@@ -77,6 +80,8 @@ Sprint 02 reproducible CAD examples are in `examples/sprint02_case_a_three_secti
 [Sprint 02 report](docs/SPRINT_02_REPORT.md),
 [acceptance matrix](docs/SPRINT_02_ACCEPTANCE_MATRIX.md), and
 [Sprint 02.1 reliability report](docs/SPRINT_02_1_REPORT.md) for measured results.
+The focused null/progress/camera corrections are documented in the
+[Patch 02.1.1 report](docs/PATCH_02_1_1_REPORT.md).
 
 ## Limitations and licensing
 
