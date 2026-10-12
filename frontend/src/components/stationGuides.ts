@@ -91,13 +91,90 @@ export function createStationGuideGroup(guides: StationGuide[], modelBox: THREE.
 
 export function disposeStationGuideGroup(group?: THREE.Group): void {
   if (!group) return
+  const geometries = new Set<THREE.BufferGeometry>()
+  const materials = new Set<THREE.Material>()
   group.traverse(object => {
-    if ('geometry' in object && object.geometry instanceof THREE.BufferGeometry) object.geometry.dispose()
+    if ('geometry' in object && object.geometry instanceof THREE.BufferGeometry) geometries.add(object.geometry)
     if ('material' in object) {
       const material = object.material as THREE.Material | THREE.Material[]
-      if (Array.isArray(material)) material.forEach(value => value.dispose())
-      else material?.dispose()
+      if (Array.isArray(material)) material.forEach(value => materials.add(value))
+      else if (material) materials.add(material)
     }
   })
+  geometries.forEach(geometry => geometry.dispose())
+  materials.forEach(material => material.dispose())
   group.removeFromParent()
+}
+
+function guideLayerKey(guides: StationGuide[], modelBox?: THREE.Box3, visible = false): string {
+  if (!visible || !modelBox || guides.length === 0) return 'hidden'
+  const box = [
+    modelBox.min.x, modelBox.min.y, modelBox.min.z,
+    modelBox.max.x, modelBox.max.y, modelBox.max.z,
+  ]
+  const definitions = guides.map(guide => [
+    guide.id,
+    guide.label,
+    guide.rOverR,
+    guide.yMm,
+    guide.color,
+    guide.role,
+  ])
+  return JSON.stringify([box, definitions])
+}
+
+type GuideGroupFactory = typeof createStationGuideGroup
+type GuideGroupDisposer = typeof disposeStationGuideGroup
+
+/**
+ * Own one visual guide layer and replace it only when semantic display
+ * requirements, model bounds, or the destination scene actually change.
+ */
+export class StationGuideLayerController {
+  private layer?: THREE.Group
+  private scene?: THREE.Scene
+  private key = 'hidden'
+
+  constructor(
+    private readonly createGroup: GuideGroupFactory = createStationGuideGroup,
+    private readonly disposeGroup: GuideGroupDisposer = disposeStationGuideGroup,
+  ) {}
+
+  sync(
+    scene: THREE.Scene | undefined,
+    modelBox: THREE.Box3 | undefined,
+    guides: StationGuide[],
+    visible: boolean,
+  ): boolean {
+    const nextKey = guideLayerKey(guides, modelBox, visible)
+    if (scene === this.scene && nextKey === this.key) return false
+
+    const removed = Boolean(this.layer)
+    if (this.layer) this.disposeGroup(this.layer)
+    this.layer = undefined
+    this.scene = scene
+    this.key = nextKey
+
+    if (!scene || !modelBox || !visible || guides.length === 0) return removed
+    this.layer = this.createGroup(guides, modelBox)
+    scene.add(this.layer)
+    return true
+  }
+
+  dispose(): boolean {
+    if (!this.layer) {
+      this.scene = undefined
+      this.key = 'hidden'
+      return false
+    }
+    this.disposeGroup(this.layer)
+    this.layer = undefined
+    this.scene = undefined
+    this.key = 'hidden'
+    return true
+  }
+
+  currentLayer(): THREE.Group | undefined {
+    return this.layer
+  }
 }

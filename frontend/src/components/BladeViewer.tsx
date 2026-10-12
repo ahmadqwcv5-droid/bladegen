@@ -1,16 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import {
   calculateCameraFrame,
   deriveBladeViewDirections,
+  measureBoxProjection,
   radialUp,
   type BladeViewDirections,
 } from './bladeViewerCamera'
 import {
   createStationGuideGroup,
-  disposeStationGuideGroup,
+  StationGuideLayerController,
   type StationGuide,
 } from './stationGuides'
 
@@ -53,7 +54,7 @@ export function BladeViewer({
   const errorCallback = useRef(onError)
   const sceneRef = useRef<THREE.Scene | undefined>(undefined)
   const modelBoxRef = useRef<THREE.Box3 | undefined>(undefined)
-  const guideLayerRef = useRef<THREE.Group | undefined>(undefined)
+  const guideController = useRef(new StationGuideLayerController(createStationGuideGroup))
   const guidesRef = useRef(guides)
   const guidesEnabledRef = useRef(guidesEnabled)
   const showGuidesRef = useRef(true)
@@ -61,15 +62,24 @@ export function BladeViewer({
   const [expanded, setExpanded] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('face')
   const [showGuides, setShowGuides] = useState(true)
+  const [cameraFraming, setCameraFraming] = useState<'fitted' | 'manual'>('fitted')
+  const [cameraDiagnostics, setCameraDiagnostics] = useState<{
+    contained?: boolean
+    direction: string
+    aspect: number
+  }>({ direction: '', aspect: 1 })
+  const [guideLayerUpdates, setGuideLayerUpdates] = useState(0)
+  const [rendererBuilds, setRendererBuilds] = useState(0)
 
-  const syncGuides = () => {
-    disposeStationGuideGroup(guideLayerRef.current)
-    guideLayerRef.current = undefined
-    if (!sceneRef.current || !modelBoxRef.current || !guidesEnabledRef.current || !showGuidesRef.current) return
-    const layer = createStationGuideGroup(guidesRef.current, modelBoxRef.current)
-    sceneRef.current.add(layer)
-    guideLayerRef.current = layer
-  }
+  const syncGuides = useCallback(() => {
+    const changed = guideController.current.sync(
+      sceneRef.current,
+      modelBoxRef.current,
+      guidesRef.current,
+      guidesEnabledRef.current && showGuidesRef.current,
+    )
+    if (changed) setGuideLayerUpdates(value => value + 1)
+  }, [])
 
   useEffect(() => { errorCallback.current = onError }, [onError])
   useEffect(() => {
@@ -77,7 +87,7 @@ export function BladeViewer({
     guidesEnabledRef.current = guidesEnabled
     showGuidesRef.current = showGuides
     syncGuides()
-  }, [guides, guidesEnabled, showGuides])
+  }, [guides, guidesEnabled, showGuides, syncGuides])
   useEffect(() => {
     if (!expanded) return
     const escape = (event: KeyboardEvent) => {
@@ -98,8 +108,12 @@ export function BladeViewer({
     let frame = 0
     let mesh: THREE.Mesh | undefined
     let directions = defaultDirections()
+    let framingMode: 'fitted' | 'manual' = 'fitted'
+    let applyingFrame = false
     setState('loading')
     setViewMode('face')
+    setCameraFraming('fitted')
+    setCameraDiagnostics({ direction: '', aspect: 1 })
     errorCallback.current?.('')
 
     const scene = new THREE.Scene()
@@ -108,6 +122,7 @@ export function BladeViewer({
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 5000)
     scene.add(camera)
     const renderer = new THREE.WebGLRenderer({ antialias: true })
+    setRendererBuilds(value => value + 1)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.outputColorSpace = THREE.SRGBColorSpace
     element.replaceChildren(renderer.domElement)
@@ -120,6 +135,21 @@ export function BladeViewer({
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true
 
+    const currentDirection = () => {
+      const direction = camera.position.clone().sub(controls.target)
+      return direction.lengthSq() > 1e-10 ? direction.normalize() : directions.face.clone()
+    }
+
+    const updateCameraDiagnostics = () => {
+      const box = modelBoxRef.current
+      const direction = currentDirection()
+      setCameraDiagnostics({
+        contained: box ? measureBoxProjection(box, camera).contained : undefined,
+        direction: direction.toArray().map(value => value.toFixed(6)).join(','),
+        aspect: camera.aspect,
+      })
+    }
+
     const frameModel = (requestedDirection: THREE.Vector3, requestedUp: THREE.Vector3) => {
       if (!mesh || disposed) return
       const box = new THREE.Box3().setFromObject(mesh)
@@ -130,13 +160,21 @@ export function BladeViewer({
       camera.near = fitted.near
       camera.far = fitted.far
       camera.updateProjectionMatrix()
+      framingMode = 'fitted'
+      setCameraFraming('fitted')
+      applyingFrame = true
       controls.update()
+      applyingFrame = false
+      updateCameraDiagnostics()
     }
 
-    const currentDirection = () => {
-      const direction = camera.position.clone().sub(controls.target)
-      return direction.lengthSq() > 1e-10 ? direction.normalize() : directions.face.clone()
+    const markManualFraming = () => {
+      if (applyingFrame) return
+      framingMode = 'manual'
+      setCameraFraming('manual')
     }
+    controls.addEventListener('start', markManualFraming)
+    controls.addEventListener('end', updateCameraDiagnostics)
 
     actions.current = {
       fit: () => frameModel(currentDirection(), camera.up),
@@ -159,9 +197,11 @@ export function BladeViewer({
       if (disposed) return
       const width = Math.max(element.clientWidth, 1)
       const height = Math.max(element.clientHeight, 1)
+      renderer.setSize(width, height, false)
       camera.aspect = width / height
       camera.updateProjectionMatrix()
-      renderer.setSize(width, height, false)
+      if (mesh && framingMode === 'fitted') frameModel(currentDirection(), camera.up)
+      else updateCameraDiagnostics()
     }
     const observer = new ResizeObserver(resize)
     observer.observe(element)
@@ -204,9 +244,10 @@ export function BladeViewer({
       disposed = true
       cancelAnimationFrame(frame)
       observer.disconnect()
+      controls.removeEventListener('start', markManualFraming)
+      controls.removeEventListener('end', updateCameraDiagnostics)
       controls.dispose()
-      disposeStationGuideGroup(guideLayerRef.current)
-      guideLayerRef.current = undefined
+      guideController.current.dispose()
       modelBoxRef.current = undefined
       sceneRef.current = undefined
       scene.traverse(object => {
@@ -222,11 +263,24 @@ export function BladeViewer({
       element.replaceChildren()
       actions.current = emptyActions()
     }
-  }, [url])
+  }, [syncGuides, url])
 
   const visibleGuides = guidesEnabled && showGuides ? guides : []
   return (
-    <div className={`viewer-shell ${expanded ? 'expanded' : ''}`} role={expanded ? 'dialog' : undefined} aria-modal={expanded || undefined} aria-label={expanded ? 'Expanded blade viewer' : undefined} data-view={viewMode} data-guide-count={visibleGuides.length}>
+    <div
+      className={`viewer-shell ${expanded ? 'expanded' : ''}`}
+      role={expanded ? 'dialog' : undefined}
+      aria-modal={expanded || undefined}
+      aria-label={expanded ? 'Expanded blade viewer' : undefined}
+      data-view={viewMode}
+      data-guide-count={visibleGuides.length}
+      data-guide-layer-updates={guideLayerUpdates}
+      data-renderer-builds={rendererBuilds}
+      data-camera-framing={cameraFraming}
+      data-camera-direction={cameraDiagnostics.direction}
+      data-camera-aspect={cameraDiagnostics.aspect.toFixed(6)}
+      data-frustum-contained={cameraDiagnostics.contained === undefined ? 'unknown' : String(cameraDiagnostics.contained)}
+    >
       <div className="viewer-host" ref={host}>
         {!url && <p>Generate a blade to load its OCP-derived STL preview.</p>}
         {state === 'loading' && <p className="viewer-overlay">Loading preview…</p>}

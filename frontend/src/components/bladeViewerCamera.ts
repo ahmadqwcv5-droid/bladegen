@@ -14,6 +14,14 @@ export type CameraFrame = {
   far: number
 }
 
+export type CameraProjection = {
+  contained: boolean
+  maxAbsX: number
+  maxAbsY: number
+  minZ: number
+  maxZ: number
+}
+
 const RADIAL_AXIS = new THREE.Vector3(0, 1, 0)
 
 function canonicalDirection(direction: THREE.Vector3): THREE.Vector3 {
@@ -88,7 +96,7 @@ export function radialUp(direction: THREE.Vector3): THREE.Vector3 {
   return new THREE.Vector3(0, 0, 1)
 }
 
-function boxCorners(box: THREE.Box3): THREE.Vector3[] {
+export function boxCorners(box: THREE.Box3): THREE.Vector3[] {
   const { min, max } = box
   return [
     new THREE.Vector3(min.x, min.y, min.z),
@@ -134,14 +142,49 @@ export function calculateCameraFrame(
     const horizontal = Math.abs(offset.dot(right)) / tanHorizontal
     const vertical = Math.abs(offset.dot(up)) / tanVertical
     distance = Math.max(distance, along + Math.max(horizontal, vertical) * padding)
+    distance = Math.max(distance, along + radius * .05)
   }
+
+  let nearestDepth = Number.POSITIVE_INFINITY
+  let farthestDepth = 0
+  for (const corner of boxCorners(box)) {
+    const depth = distance - corner.sub(center).dot(direction)
+    nearestDepth = Math.min(nearestDepth, depth)
+    farthestDepth = Math.max(farthestDepth, depth)
+  }
+  const near = Math.max(nearestDepth * .5, 0.001)
+  const far = Math.max(farthestDepth * 1.5, near + 1)
 
   return {
     center,
     direction,
     up,
     distance,
-    near: Math.max(radius / 1000, 0.001),
-    far: Math.max(distance + radius * 4, 100),
+    near,
+    far,
+  }
+}
+
+/** Measure authoritative model-box containment using the camera's real projection. */
+export function measureBoxProjection(
+  box: THREE.Box3,
+  camera: THREE.PerspectiveCamera,
+  tolerance = 1e-6,
+): CameraProjection {
+  camera.updateMatrixWorld(true)
+  const projected = boxCorners(box).map(corner => corner.project(camera))
+  const maxAbsX = Math.max(...projected.map(point => Math.abs(point.x)))
+  const maxAbsY = Math.max(...projected.map(point => Math.abs(point.y)))
+  const minZ = Math.min(...projected.map(point => point.z))
+  const maxZ = Math.max(...projected.map(point => point.z))
+  return {
+    contained: maxAbsX <= 1 + tolerance
+      && maxAbsY <= 1 + tolerance
+      && minZ >= -1 - tolerance
+      && maxZ <= 1 + tolerance,
+    maxAbsX,
+    maxAbsY,
+    minZ,
+    maxZ,
   }
 }
