@@ -9,10 +9,10 @@ from pathlib import Path
 from bladegen.assembly.builder import BORE_CLEARANCE_VOLUME_TOLERANCE_MM3, build_assembly
 from bladegen.assembly.hub import make_bore_cutter
 from bladegen.assembly.validation import common_volume_mm3, measured_bore
-from bladegen.models import PropellerSpec
 from bladegen.pipeline import build as build_blade
 from bladegen.progress import ProgressReporter, ProgressState
 from bladegen.solid.ocp_solidify import inspect_shape, read_step, write_step, write_stl
+from bladegen.validation.propeller_preflight import validate_propeller_payload
 
 ASSEMBLY_PROGRESS = {
     "blade_copies_complete": ProgressState(
@@ -179,7 +179,8 @@ def build_propeller(
             "Checking the neutral assembly contract",
         )
     )
-    spec = PropellerSpec.from_json(spec_path)
+    payload = json.loads(spec_path.read_text(encoding="utf-8"))
+    spec = validate_propeller_payload(payload, require_runtime_support=True)
     output_dir.mkdir(parents=True, exist_ok=True)
     propeller_spec_path = output_dir / "propeller_spec.json"
     propeller_spec_path.write_text(spec.model_dump_json(indent=2) + "\n", encoding="utf-8")

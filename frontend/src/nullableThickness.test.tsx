@@ -12,6 +12,7 @@ const api = vi.hoisted(() => ({
   getJob: vi.fn(),
   getArtifacts: vi.fn(),
   getDesignPreview: vi.fn(),
+  getPropellerCapabilities: vi.fn(),
 }))
 vi.mock('./api/client', () => api)
 vi.mock('./components/BladeViewer', () => ({

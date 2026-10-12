@@ -4,6 +4,20 @@
 .assembly-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0 0; }
 .assembly-summary span { padding: 8px; background: #eef4f5; border-radius: 3px; font-size: .78rem; }
 .build-kind { text-transform: capitalize; }
+.current-design-status.modified { border-left-color: #8b6f37; }
+.current-design-status.checking { border-left-color: #346f80; }
+.current-design-status.valid { border-left-color: #2f7651; }
+.current-design-status.invalid { border-left-color: #a43f32; }
+.active-generation-label { margin: 10px 0 4px; color: #264d59; }
+.current-input-errors { margin-bottom: 18px; }
+.issue-field { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; }
+.hub-guidance { margin-top: 12px; padding: 12px; border: 1px solid #b7c9cd; border-radius: 4px; background: #f3f8f9; }
+.hub-guidance.incompatible { border-color: #d3978c; background: #fff3f0; color: #6b241b; }
+.hub-guidance.compatible { border-color: #8dbda3; background: #f1f8f4; color: #204f36; }
+.hub-guidance dl { display: grid; grid-template-columns: minmax(150px, 1fr) 1fr; gap: 4px 12px; margin: 10px 0; }
+.hub-guidance dt { font-weight: 700; }
+.hub-guidance dd { margin: 0; }
+.hub-guidance p { margin: 8px 0 0; font-size: .82rem; }
 @media (max-width: 720px) {
   .assembly-summary { grid-template-columns: 1fr; }
 }

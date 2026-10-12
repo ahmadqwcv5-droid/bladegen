@@ -69,7 +69,10 @@ requests and rejects stale revisions. It does not duplicate NACA or PCHIP
 mathematics and never starts OpenVSP or writes STEP/STL artifacts.
 
 The React editor owns only transient row identities, profile display names, and
-numeric input drafts; serialized projects remain pure BladeSpec v0.2. At
+numeric input drafts; serialized projects remain pure BladeSpec v0.2 or complete
+PropellerSpec v0.1 documents. Project open identifies the contract by structure,
+validates it through the corresponding backend endpoint, then atomically
+replaces editor state. At
 submission it freezes a canonical JSON snapshot and binds artifacts to the
 returned job ID. Comparing the live editor with that snapshot drives the stale-
 preview state, and an older poll response cannot replace a newer active job.

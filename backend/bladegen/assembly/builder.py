@@ -9,6 +9,7 @@ from OCP.BRepAlgoAPI import BRepAlgoAPI_Common, BRepAlgoAPI_Cut, BRepAlgoAPI_Fus
 from OCP.TopAbs import TopAbs_SOLID
 from OCP.TopoDS import TopoDS
 
+from bladegen.assembly.capabilities import require_supported_blade_count
 from bladegen.assembly.hub import make_bore_cutter, make_hub
 from bladegen.assembly.transforms import (
     azimuth_angles,
@@ -29,7 +30,6 @@ BOOLEAN_FUZZY_TOLERANCE_MM = 1e-7
 MINIMUM_OVERLAP_MM3 = 1e-5
 COLLISION_VOLUME_TOLERANCE_MM3 = 1e-5
 BORE_CLEARANCE_VOLUME_TOLERANCE_MM3 = 1e-5
-QUALIFIED_BLADE_COUNTS = frozenset({2, 3, 4})
 
 
 def _boolean(operation, label: str):
@@ -61,11 +61,7 @@ def build_assembly(
     assembly: AssemblySpec,
     progress_callback: Callable[[str], None] | None = None,
 ) -> tuple[object, dict]:
-    if assembly.blade_count not in QUALIFIED_BLADE_COUNTS:
-        raise ValueError(
-            f"Blade count {assembly.blade_count} is not qualified for Sprint 04A; "
-            "the measured production range is 2-4 blades"
-        )
+    require_supported_blade_count(assembly.blade_count)
     reference = read_step(reference_blade_step)
     reference_info = inspect_shape(reference)
     if reference_info["solids"] != 1 or not reference_info["brepcheck_valid"]:

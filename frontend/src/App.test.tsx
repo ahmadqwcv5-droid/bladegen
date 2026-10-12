@@ -12,6 +12,7 @@ const api = vi.hoisted(() => ({
   getJob: vi.fn(),
   getArtifacts: vi.fn(),
   getDesignPreview: vi.fn(),
+  getPropellerCapabilities: vi.fn(),
 }))
 vi.mock('./api/client', () => api)
 vi.mock('./components/BladeViewer', () => ({
@@ -229,7 +230,8 @@ describe('Sprint 02 editor', () => {
     await loaded()
     api.validate.mockRejectedValueOnce(new Error('root_radius_ratio is inconsistent'))
     await user.click(screen.getByRole('button', { name: 'Generate Blade' }))
-    expect(await screen.findByText(/Input validation error: root_radius_ratio is inconsistent/)).toBeInTheDocument()
+    expect(await screen.findByText('Current inputs are invalid. No new CAD build was started.')).toBeInTheDocument()
+    expect(screen.getByText(/root_radius_ratio is inconsistent/)).toBeInTheDocument()
     expect(api.build).not.toHaveBeenCalled()
   })
 

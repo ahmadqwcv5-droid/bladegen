@@ -7,7 +7,7 @@ import type { BladeSpec, DesignPreview, Job, PreviewProfile } from './types/blad
 
 const api = vi.hoisted(() => ({
   getExample: vi.fn(), validate: vi.fn(), build: vi.fn(), getJob: vi.fn(), getArtifacts: vi.fn(),
-  getDesignPreview: vi.fn(), getAirfoilCatalog: vi.fn(), getAirfoilProfile: vi.fn(), importAirfoil: vi.fn(),
+  getDesignPreview: vi.fn(), getPropellerCapabilities: vi.fn(), getAirfoilCatalog: vi.fn(), getAirfoilProfile: vi.fn(), importAirfoil: vi.fn(),
 }))
 const viewerProbe = vi.hoisted(() => ({ guideRefs: [] as { yMm: number; label: string }[][] }))
 vi.mock('./api/client', () => api)

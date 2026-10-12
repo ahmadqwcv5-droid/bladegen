@@ -7,7 +7,7 @@ import type { BladeSpec, DesignPreview, Job } from './types/bladespec'
 
 const api = vi.hoisted(() => ({
   getExample: vi.fn(), validate: vi.fn(), build: vi.fn(), validatePropeller: vi.fn(), buildPropeller: vi.fn(),
-  getJob: vi.fn(), getArtifacts: vi.fn(), getDesignPreview: vi.fn(), getAirfoilCatalog: vi.fn(),
+  getJob: vi.fn(), getArtifacts: vi.fn(), getDesignPreview: vi.fn(), getPropellerCapabilities: vi.fn(), getAirfoilCatalog: vi.fn(),
   getAirfoilProfile: vi.fn(), importAirfoil: vi.fn(),
 }))
 vi.mock('./api/client', () => api)
@@ -66,6 +66,12 @@ beforeEach(() => {
   vi.clearAllMocks()
   api.getExample.mockResolvedValue(structuredClone(example))
   api.getDesignPreview.mockImplementation(async (spec: BladeSpec) => preview(spec))
+  api.getPropellerCapabilities.mockResolvedValue({
+    contract_blade_count_min: 2,
+    contract_blade_count_max: 8,
+    supported_blade_counts: [2, 3, 4],
+    release_policy: 'Blade counts 2, 3, and 4 are qualified in this release.',
+  })
   api.validatePropeller.mockResolvedValue({ valid: true })
   api.buildPropeller.mockResolvedValue(queued)
   api.getJob.mockResolvedValue(succeeded)

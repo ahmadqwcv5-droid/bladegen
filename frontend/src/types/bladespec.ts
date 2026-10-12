@@ -30,6 +30,40 @@ export type PropellerSpec = {
   blade_spec: BladeSpec
   assembly: AssemblySpec
 }
+export type ValidationIssue = {
+  code: string
+  field: string
+  message: string
+  context?: Record<string, unknown>
+  operator?: string
+  bound?: number
+}
+export type PropellerCapabilities = {
+  contract_blade_count_min: number
+  contract_blade_count_max: number
+  supported_blade_counts: number[]
+  release_policy: string
+}
+export type NominalHubGuidance = {
+  root_radius_mm: number
+  hub_radius_mm: number
+  nominal_radial_overlap_mm: number
+  nominal_radial_gap_mm: number
+  required_hub_diameter_bound_mm: number
+  bound_is_exclusive: boolean
+  passes_nominal_policy: boolean
+}
+export type PropellerValidationResponse = {
+  valid: true
+  schema_version: '0.1'
+  blade_count: number
+  airfoil_sections_per_blade: number
+  rotation_axis: 'X'
+  nominal_radial_overlap_mm: number
+  nominal_hub_guidance: NominalHubGuidance
+  capabilities: PropellerCapabilities
+  geometric_qualification: string
+}
 export type Artifact = { name: string; size_bytes: number; download_url: string }
 export type Job = {
   job_id: string
