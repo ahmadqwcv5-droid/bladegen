@@ -60,7 +60,7 @@ describe('Sprint 03A live canonical preview', () => {
     const before = container.querySelector('.chart-line')?.getAttribute('data-values')
 
     const chordValue = screen.getByLabelText('Chord value 1')
-    fireEvent.change(chordValue, { target: { value: '.37' } })
+    fireEvent.change(chordValue, { target: { value: '74' } })
     fireEvent.blur(chordValue)
     await waitFor(() => expect(api.getDesignPreview).toHaveBeenLastCalledWith(
       expect.objectContaining({ chord_distribution: expect.objectContaining({ points: expect.arrayContaining([expect.objectContaining({ chord_over_R: .37 })]) }) }),

@@ -10,6 +10,7 @@ derived STL, and downloads STEP and validation artifacts.
 
 - One blade; searchable parametric NACA and persistent imported DAT/CSV coordinate profiles.
 - Canonical source/resolved 2D airfoil inspection, two-station comparison, and backend-sampled engineering charts.
+- Transactional vertical chart editing in engineering units with backend validation and bounded undo/redo.
 - Stable station selection with exact radial-location guides in the matching generated 3D blade.
 - Dynamic airfoil stations plus independently editable distribution controls.
 - Independent chord, twist, rake, skew, and thickness station grids.
@@ -75,6 +76,8 @@ Press Escape or **Restore Viewer** to return without reloading the STL.
 
 Select **Inspect** on any station to link its current canonical 2D definition to a visual XZ guide in the 3D scene. Guide Y is calculated exactly as `(diameter_mm / 2) * r_over_R`; the model bounds only size the overlay. **Compare Stations** overlays canonical source or resolved profiles at equal x/y scale and can show orange A and teal B guides. These guides are visual radial-location aids, not measured STEP cross-sections. If editor inputs differ from the displayed CAD snapshot, the old CAD remains labeled and all current-design guides are hidden until a matching build succeeds.
 
+Distribution charts edit control values vertically while keeping each `r/R` fixed. Chord, rake, and skew are displayed in millimeters, twist in degrees, and thickness in percent t/c; BladeSpec continues to store its canonical normalized values. Drag a marker or focus it and use Arrow Up/Down (Shift for 10×). Release validates one full BladeSpec candidate before commit. Natural NACA/imported thickness controls are protected unless a NACA station has an explicit override. Undo/Redo buttons and Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, or Ctrl+Y operate on curve transactions without generating CAD.
+
 CLI build:
 
 ```bash
@@ -103,7 +106,7 @@ Sprint 02 reproducible CAD examples are in `examples/sprint02_case_a_three_secti
 The focused null/progress/camera corrections are documented in the
 [Patch 02.1.1 report](docs/PATCH_02_1_1_REPORT.md). Sprint 03A visual design
 and imported-profile CAD results are in the [Sprint 03A report](docs/SPRINT_03A_REPORT.md)
-and [acceptance matrix](docs/SPRINT_03A_ACCEPTANCE_MATRIX.md). Sprint 03B interactive station inspection, comparison, and stale-CAD synchronization are documented in the [Sprint 03B report](docs/SPRINT_03B_REPORT.md) and [acceptance matrix](docs/SPRINT_03B_ACCEPTANCE_MATRIX.md).
+and [acceptance matrix](docs/SPRINT_03A_ACCEPTANCE_MATRIX.md). Sprint 03B interactive station inspection, comparison, and stale-CAD synchronization are documented in the [Sprint 03B report](docs/SPRINT_03B_REPORT.md) and [acceptance matrix](docs/SPRINT_03B_ACCEPTANCE_MATRIX.md). Sprint 03C visual curve editing, transaction safety, and real-CAD evidence are documented in the [Sprint 03C report](docs/SPRINT_03C_REPORT.md) and [acceptance matrix](docs/SPRINT_03C_ACCEPTANCE_MATRIX.md).
 
 ## Limitations and licensing
 

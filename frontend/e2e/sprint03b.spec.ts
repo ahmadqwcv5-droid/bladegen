@@ -133,7 +133,7 @@ test('real CAD station inspection and canonical comparison remain revision-safe'
   const oldJobLabel = await page.locator('.preview-label').textContent()
   const oldJobId = oldJobLabel?.match(/job ([0-9a-f]{8})/i)?.[1]
   expect(oldJobId).toBeTruthy()
-  await page.getByLabel('Chord value 3').fill('0.31')
+  await page.getByLabel('Chord value 3').fill('62')
   await page.getByLabel('Chord value 3').blur()
   await expect(page.getByText(/Inputs changed — regenerate/)).toBeVisible()
   await expect(shell).toHaveAttribute('data-guide-count', '0')
