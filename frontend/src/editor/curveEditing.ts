@@ -37,6 +37,12 @@ export function displayToStored(curve: CurveName, displayed: number, diameterMm:
   return displayed / bladeRadiusMm(diameterMm)
 }
 
+/** Format engineering values for editing without changing their stored precision. */
+export function formatEngineeringValue(curve: CurveName, value: number): string {
+  const decimals = curve === 'thickness' ? 4 : 3
+  return value.toFixed(decimals).replace(/0+$/, '').replace(/\.$/, '')
+}
+
 export function validateDisplayValue(definition: CurveDefinition, value: number): void {
   if (!Number.isFinite(value)) throw new Error(`${definition.title} must be a finite number`)
   if (definition.positive && value <= 0) throw new Error(`${definition.title} must be greater than zero ${definition.unit}`)

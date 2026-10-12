@@ -106,7 +106,7 @@ Sprint 02 reproducible CAD examples are in `examples/sprint02_case_a_three_secti
 The focused null/progress/camera corrections are documented in the
 [Patch 02.1.1 report](docs/PATCH_02_1_1_REPORT.md). Sprint 03A visual design
 and imported-profile CAD results are in the [Sprint 03A report](docs/SPRINT_03A_REPORT.md)
-and [acceptance matrix](docs/SPRINT_03A_ACCEPTANCE_MATRIX.md). Sprint 03B interactive station inspection, comparison, and stale-CAD synchronization are documented in the [Sprint 03B report](docs/SPRINT_03B_REPORT.md) and [acceptance matrix](docs/SPRINT_03B_ACCEPTANCE_MATRIX.md). Sprint 03C visual curve editing, transaction safety, and real-CAD evidence are documented in the [Sprint 03C report](docs/SPRINT_03C_REPORT.md) and [acceptance matrix](docs/SPRINT_03C_ACCEPTANCE_MATRIX.md).
+and [acceptance matrix](docs/SPRINT_03A_ACCEPTANCE_MATRIX.md). Sprint 03B interactive station inspection, comparison, and stale-CAD synchronization are documented in the [Sprint 03B report](docs/SPRINT_03B_REPORT.md) and [acceptance matrix](docs/SPRINT_03B_ACCEPTANCE_MATRIX.md). Sprint 03C visual curve editing, transaction safety, and real-CAD evidence are documented in the [Sprint 03C report](docs/SPRINT_03C_REPORT.md) and [acceptance matrix](docs/SPRINT_03C_ACCEPTANCE_MATRIX.md). StrictMode-safe continuous editing and no-op history integrity are documented in the [Patch 03C.1 report](docs/PATCH_03C_1_REPORT.md).
 
 ## Limitations and licensing
 

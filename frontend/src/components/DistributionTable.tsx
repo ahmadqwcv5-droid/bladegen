@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { addControlPoint, removeControlPoint, updateControlPoint } from '../editor/bladespecEditor'
 import type { CurveDefinition } from '../editor/curveEditing'
-import { storedToDisplay } from '../editor/curveEditing'
+import { formatEngineeringValue, storedToDisplay } from '../editor/curveEditing'
 import type { Distribution } from '../types/bladespec'
 import { NumericInput } from './NumericInput'
 
@@ -66,7 +66,7 @@ export function DistributionTable({
       const locked = lockReason(point.r_over_R)
       return <tr key={ids[index] ?? index} className={locked ? 'curve-point-locked' : ''}>
         <td><NumericInput label={`${definition.title} radius ${index + 1}`} step="0.01" value={point.r_over_R} disabled={disabled || index === 0 || index === value.points.length - 1} onCommit={radius => updateRadius(index, radius)} /></td>
-        <td><NumericInput label={`${definition.title} value ${index + 1}`} step={String(definition.step)} value={storedToDisplay(definition.name, point[definition.valueKey], diameterMm)} disabled={disabled || Boolean(locked)} onCommit={displayed => onPointValue(index, displayed)} />{locked && <small className="curve-lock-reason">{locked}</small>}</td>
+        <td><NumericInput label={`${definition.title} value ${index + 1}`} step={String(definition.step)} value={storedToDisplay(definition.name, point[definition.valueKey], diameterMm)} formatValue={displayed => formatEngineeringValue(definition.name, displayed)} disabled={disabled || Boolean(locked)} onCommit={displayed => onPointValue(index, displayed)} />{locked && <small className="curve-lock-reason">{locked}</small>}</td>
         <td><button type="button" disabled={disabled || index === 0 || index === value.points.length - 1} onClick={() => remove(index)}>Remove</button></td>
       </tr>
     })}</tbody></table></div>

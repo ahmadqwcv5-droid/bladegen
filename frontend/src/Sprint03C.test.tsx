@@ -79,6 +79,39 @@ describe('Sprint 03C committed curve transactions', () => {
     expect(api.build).not.toHaveBeenCalled()
   })
 
+  it('preserves Redo across repeated pointer, numeric, and boundary no-ops', async () => {
+    const user = userEvent.setup()
+    await load()
+    const input = screen.getByLabelText('Chord value 3')
+    fireEvent.change(input, { target: { value: '64' } })
+    fireEvent.blur(input)
+    await waitFor(() => expect(api.validate).toHaveBeenCalledTimes(1))
+    await user.click(screen.getByRole('button', { name: 'Undo curve edit' }))
+    expect(screen.getByLabelText('Chord value 3')).toHaveValue(60)
+
+    const marker = screen.getByRole('slider', { name: /Chord Distribution control 3,/ })
+    const svg = screen.getByRole('img', { name: /Chord Distribution canonical/ })
+    for (const pointerId of [70, 71]) {
+      fireEvent.pointerDown(marker, { pointerId, clientX: 100, clientY: 100 })
+      fireEvent.pointerUp(svg, { pointerId, clientX: 100, clientY: 100 })
+    }
+    fireEvent.focus(input); fireEvent.blur(input)
+    fireEvent.change(input, { target: { value: '60.0' } }); fireEvent.blur(input)
+    fireEvent.change(screen.getByLabelText('Chord interpolation'), { target: { value: 'pchip' } })
+    expect(api.validate).toHaveBeenCalledTimes(1)
+
+    fireEvent.pointerDown(marker, { pointerId: 72, clientX: 100, clientY: 100 })
+    fireEvent.keyDown(window, { key: 'y', ctrlKey: true })
+    expect(screen.getByLabelText('Chord value 3')).toHaveValue(60)
+    expect(screen.getByRole('button', { name: 'Redo curve edit' })).toBeDisabled()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.getByRole('button', { name: 'Redo curve edit' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Redo curve edit' }))
+    expect(screen.getByLabelText('Chord value 3')).toHaveValue(64)
+    expect(api.validate).toHaveBeenCalledTimes(1)
+    expect(api.build).not.toHaveBeenCalled()
+  })
+
   it('keeps the committed spec unchanged while validating and ignores a stale response', async () => {
     let resolve!: (value: object) => void
     api.validate.mockReturnValueOnce(new Promise(value => { resolve = value }))
