@@ -5,6 +5,7 @@ import {
   CURVES,
   CurveHistory,
   displayToStored,
+  formatEngineeringValue,
   replaceCurvePoint,
   storedToDisplay,
   thicknessControlLock,
@@ -25,6 +26,14 @@ describe('Sprint 03C engineering units', () => {
   it('keeps normalized storage constant while diameter changes physical display semantics', () => {
     expect(storedToDisplay('chord', .32, 400)).toBe(64)
     expect(storedToDisplay('chord', .32, 720)).toBe(115.2)
+  })
+
+  it('formats readable engineering text without altering precise values', () => {
+    const precise = 64.00000198364258
+    expect(formatEngineeringValue('chord', precise)).toBe('64')
+    expect(formatEngineeringValue('twist', 23.1254)).toBe('23.125')
+    expect(formatEngineeringValue('thickness', 12.34567)).toBe('12.3457')
+    expect(precise).toBe(64.00000198364258)
   })
 })
 

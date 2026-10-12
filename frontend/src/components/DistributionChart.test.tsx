@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { StrictMode, useState } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { DistributionPreview } from '../types/bladespec'
 import { CHART_HEIGHT, CHART_MARGIN, CHART_WIDTH, clientPointToSvg, DistributionChart, nearestSampleIndex, valueFromSvgY } from './DistributionChart'
@@ -89,4 +90,110 @@ it('supports keyboard increments and prevents locked controls from editing', asy
   expect(screen.getByRole('slider')).toHaveAttribute('tabindex', '-1')
   fireEvent.pointerDown(screen.getByRole('slider'), { pointerId: 9 })
   expect(commit).toHaveBeenCalledTimes(1)
+})
+
+it('does not commit clicks or pointer motion below the intent threshold', async () => {
+  const commit = vi.fn(async (_index: number, _value: number) => true)
+  const interaction = vi.fn()
+  const { container } = render(<DistributionChart title="Chord Distribution" data={first} controls={[{ radius: .2, value: 64 }]} unit="mm" onCommit={commit} onInteractionChange={interaction} />)
+  const svg = container.querySelector('svg')!
+  const marker = screen.getByRole('slider')
+  fireEvent.pointerDown(marker, { pointerId: 20, clientX: 100, clientY: 100 })
+  fireEvent.pointerUp(svg, { pointerId: 20, clientX: 100, clientY: 100 })
+  fireEvent.pointerDown(marker, { pointerId: 21, clientX: 100, clientY: 100 })
+  fireEvent.pointerMove(svg, { pointerId: 21, clientX: 102, clientY: 101 })
+  fireEvent.pointerUp(svg, { pointerId: 21, clientX: 102, clientY: 101 })
+  expect(commit).not.toHaveBeenCalled()
+  expect(interaction).toHaveBeenLastCalledWith('idle')
+})
+
+it('recovers from rejection, Escape, and pointer cancellation for the next gesture', async () => {
+  const commit = vi.fn()
+    .mockRejectedValueOnce(new Error('network unavailable'))
+    .mockResolvedValue(true)
+  const error = vi.fn()
+  const { container } = render(<DistributionChart title="Chord Distribution" data={first} controls={[{ radius: .2, value: 64 }]} unit="mm" onCommit={commit} onError={error} />)
+  const svg = container.querySelector('svg')!
+  const marker = screen.getByRole('slider')
+  const meaningful = async (pointerId: number) => {
+    fireEvent.pointerDown(marker, { pointerId, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(svg, { pointerId, clientX: 100, clientY: 80 })
+    fireEvent.pointerUp(svg, { pointerId, clientX: 100, clientY: 80 })
+  }
+  await meaningful(30)
+  await waitFor(() => expect(error).toHaveBeenCalledWith('Curve edit failed: network unavailable'))
+  await meaningful(31)
+  await waitFor(() => expect(commit).toHaveBeenCalledTimes(2))
+  fireEvent.pointerDown(marker, { pointerId: 32, clientX: 100, clientY: 100 })
+  fireEvent.keyDown(window, { key: 'Escape' })
+  fireEvent.pointerDown(marker, { pointerId: 33, clientX: 100, clientY: 100 })
+  fireEvent.pointerCancel(svg, { pointerId: 33 })
+  await meaningful(34)
+  await waitFor(() => expect(commit).toHaveBeenCalledTimes(3))
+})
+
+it('invalidates a superseded validation through explicit parent cancellation', async () => {
+  let resolveFirst!: (accepted: boolean) => void
+  const commit = vi.fn()
+    .mockImplementationOnce(() => new Promise<boolean>(resolve => { resolveFirst = resolve }))
+    .mockResolvedValue(true)
+  const interaction = vi.fn()
+  const props = { title: 'Chord Distribution', data: first, controls: [{ radius: .2, value: 64 }], unit: 'mm', onCommit: commit, onInteractionChange: interaction }
+  const { container, rerender } = render(<DistributionChart {...props} cancelVersion={0} />)
+  const svg = container.querySelector('svg')!
+  const drag = (pointerId: number, y: number) => {
+    fireEvent.pointerDown(screen.getByRole('slider'), { pointerId, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(svg, { pointerId, clientX: 100, clientY: y })
+    fireEvent.pointerUp(svg, { pointerId, clientX: 100, clientY: y })
+  }
+  drag(50, 75)
+  await waitFor(() => expect(commit).toHaveBeenCalledTimes(1))
+  rerender(<DistributionChart {...props} cancelVersion={1} />)
+  drag(51, 85)
+  await waitFor(() => expect(commit).toHaveBeenCalledTimes(2))
+  await act(async () => { resolveFirst(true); await Promise.resolve() })
+  expect(interaction).toHaveBeenLastCalledWith('idle')
+})
+
+it('does not update or report an obsolete component after pending validation unmounts', async () => {
+  let rejectCommit!: (reason: Error) => void
+  const commit = vi.fn(() => new Promise<boolean>((_resolve, reject) => { rejectCommit = reject }))
+  const interaction = vi.fn()
+  const error = vi.fn()
+  const { container, unmount } = render(<DistributionChart title="Chord Distribution" data={first} controls={[{ radius: .2, value: 64 }]} unit="mm" onCommit={commit} onInteractionChange={interaction} onError={error} />)
+  const svg = container.querySelector('svg')!
+  fireEvent.pointerDown(screen.getByRole('slider'), { pointerId: 60, clientX: 100, clientY: 100 })
+  fireEvent.pointerMove(svg, { pointerId: 60, clientX: 100, clientY: 75 })
+  fireEvent.pointerUp(svg, { pointerId: 60, clientX: 100, clientY: 75 })
+  await waitFor(() => expect(commit).toHaveBeenCalledOnce())
+  error.mockClear()
+  unmount()
+  await act(async () => { rejectCommit(new Error('late network failure')); await Promise.resolve() })
+  expect(error).not.toHaveBeenCalled()
+  expect(interaction).toHaveBeenLastCalledWith('validating')
+})
+
+it('supports repeated same-marker drags under StrictMode without a remount workaround', async () => {
+  const commits = vi.fn(async (_index: number, _value: number) => true)
+  function Harness() {
+    const [value, setValue] = useState(23)
+    const [interaction, setInteraction] = useState<'idle' | 'drafting' | 'validating'>('idle')
+    return <><output>{interaction}</output><DistributionChart
+      title="Twist Distribution" data={{ ...first, unit: 'deg' }} controls={[{ radius: .65, value }]}
+      unit="deg" onInteractionChange={setInteraction}
+      onCommit={async (index, next) => { const accepted = await commits(index, next); setValue(next); return accepted }}
+    /></>
+  }
+  const { container } = render(<StrictMode><Harness /></StrictMode>)
+  const svg = container.querySelector('svg')!
+  Object.defineProperty(svg, 'getBoundingClientRect', { configurable: true, value: () => bounds(CHART_WIDTH, CHART_HEIGHT) })
+  for (let edit = 0; edit < 3; edit += 1) {
+    const marker = screen.getByRole('slider')
+    const pointerId = 40 + edit
+    fireEvent.pointerDown(marker, { pointerId, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(svg, { pointerId, clientX: 100, clientY: 75 + edit * 8 })
+    fireEvent.pointerUp(svg, { pointerId, clientX: 100, clientY: 75 + edit * 8 })
+    await waitFor(() => expect(screen.getByText('idle')).toBeVisible())
+    await waitFor(() => expect(commits).toHaveBeenCalledTimes(edit + 1))
+  }
 })

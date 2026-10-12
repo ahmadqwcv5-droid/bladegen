@@ -131,6 +131,7 @@ export default function App() {
   const [selectorStation, setSelectorStation] = useState<number>()
   const [activeDistribution, setActiveDistribution] = useState<keyof DesignPreview['distributions']>('chord')
   const [curveInteraction, setCurveInteraction] = useState<ChartInteraction>('idle')
+  const [curveCancelVersion, setCurveCancelVersion] = useState(0)
   const [, setHistoryVersion] = useState(0)
   const activeJobId = useRef<string | undefined>(undefined)
   const submissionPending = useRef(false)
@@ -146,6 +147,7 @@ export default function App() {
   const refreshHistory = () => setHistoryVersion(value => value + 1)
   const cancelCurveWork = () => {
     curveValidationRevision.current += 1
+    setCurveCancelVersion(value => value + 1)
     setCurveInteraction('idle')
   }
   const clearCurveHistory = () => {
@@ -239,9 +241,10 @@ export default function App() {
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
-      if (target?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return
+      if (target instanceof Element && target.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return
       const command = event.ctrlKey || event.metaKey
       if (!command) return
+      if (curveInteraction !== 'idle') { event.preventDefault(); return }
       if (event.key.toLowerCase() === 'z' && event.shiftKey) { event.preventDefault(); redoCurveEdit() }
       else if (event.key.toLowerCase() === 'z') { event.preventDefault(); undoCurveEdit() }
       else if (event.key.toLowerCase() === 'y') { event.preventDefault(); redoCurveEdit() }
@@ -319,6 +322,7 @@ export default function App() {
   const commitCurveCandidate = async (candidate: BladeSpec, label: string): Promise<boolean> => {
     const before = specRef.current
     if (!before || curveInteraction === 'validating') return false
+    if (canonicalJson(candidate) === canonicalJson(before)) return true
     const local = validateEditorSpec(candidate)
     if (local.length) {
       setErrors(local)
@@ -629,6 +633,7 @@ export default function App() {
                 unit={activeCurve.unit}
                 step={activeCurve.step}
                 stale={chartPreviewStale}
+                cancelVersion={curveCancelVersion}
                 onCommit={(index, value) => commitCurvePoint(activeCurve, index, value)}
                 onInteractionChange={setCurveInteraction}
                 onError={error => setErrors(error ? [error] : [])}

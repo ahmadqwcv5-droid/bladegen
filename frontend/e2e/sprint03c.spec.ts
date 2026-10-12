@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import path from 'node:path'
 
-const evidenceRoot = path.resolve('../docs/screenshots/sprint03c')
+const evidenceRoot = path.resolve('../docs/screenshots/patch03c1')
 const evidence = (name: string) => path.join(evidenceRoot, name)
 
 async function dragControlTo(page: Page, marker: Locator, targetValue: number) {
@@ -26,9 +26,11 @@ test('visual curve editing is transactional and final CAD matches the committed 
   await page.setViewportSize({ width: 1280, height: 900 })
   let builds = 0
   let validations = 0
+  let previews = 0
   page.on('request', request => {
     if (request.method() === 'POST' && request.url().endsWith('/api/build')) builds += 1
     if (request.method() === 'POST' && request.url().endsWith('/api/validate')) validations += 1
+    if (request.method() === 'POST' && request.url().endsWith('/api/design-preview')) previews += 1
   })
   await page.goto('/')
   await expect(page.getByRole('img', { name: /Chord Distribution canonical/ })).toBeVisible({ timeout: 30_000 })
@@ -36,37 +38,64 @@ test('visual curve editing is transactional and final CAD matches the committed 
   await page.screenshot({ path: evidence('selected_control.png'), fullPage: true })
 
   const chordMarker = page.getByRole('slider', { name: /Chord Distribution control 3,/ })
-  await dragControlTo(page, chordMarker, 64)
-  await expect(page.getByText(/Draft · r\/R 0\.5000/)).toBeVisible()
-  await page.locator('.distribution-visual').screenshot({ path: evidence('active_draft.png') })
-  expect(builds).toBe(0)
-  await page.mouse.up()
-  await expect.poll(async () => Number(await page.getByLabel('Chord value 3').inputValue())).toBeCloseTo(64, 3)
-  expect(validations).toBe(1)
-  expect(builds).toBe(0)
-  await page.locator('.distribution-visual').screenshot({ path: evidence('updated_curve_table.png') })
+  for (const [index, target] of [64, 62, 66, 63, 64].entries()) {
+    const beforeValidation = validations
+    const beforePreview = previews
+    await dragControlTo(page, chordMarker, target)
+    await expect(page.getByText(/Draft · r\/R 0\.5000/)).toBeVisible()
+    expect(validations).toBe(beforeValidation)
+    expect(previews).toBe(beforePreview)
+    expect(builds).toBe(0)
+    if (index === 0) await page.locator('.distribution-visual').screenshot({ path: evidence('active_draft.png') })
+    await page.mouse.up()
+    await expect.poll(async () => Number(await page.getByLabel('Chord value 3').inputValue())).toBeCloseTo(target, 3)
+    await expect(page.getByText('Ready', { exact: true })).toBeVisible()
+    await expect(page.getByText(/Canonical design preview is current/)).toBeVisible({ timeout: 30_000 })
+    expect(validations).toBe(beforeValidation + 1)
+    expect(previews).toBe(beforePreview + 1)
+  }
+  await page.locator('.distribution-visual').screenshot({ path: evidence('five_consecutive_chord_edits.png') })
 
   await page.getByRole('button', { name: 'Undo curve edit' }).click()
-  await expect(page.getByLabel('Chord value 3')).toHaveValue('60')
+  await expect(page.getByLabel('Chord value 3')).toHaveValue('63')
+  await chordMarker.hover()
+  const chordBox = await chordMarker.boundingBox()
+  expect(chordBox).not.toBeNull()
+  await page.mouse.move(chordBox!.x + chordBox!.width / 2, chordBox!.y + chordBox!.height / 2)
+  await page.mouse.down(); await page.mouse.up()
+  await page.getByLabel('Chord value 3').focus(); await page.getByLabel('Chord value 3').blur()
+  await page.getByLabel('Chord value 3').fill('63.0'); await page.getByLabel('Chord value 3').blur()
+  expect(validations).toBe(5)
+  await expect(page.getByRole('button', { name: 'Redo curve edit' })).toBeEnabled()
   await page.getByRole('button', { name: 'Redo curve edit' }).click()
-  await expect.poll(async () => Number(await page.getByLabel('Chord value 3').inputValue())).toBeCloseTo(64, 3)
-  await page.screenshot({ path: evidence('undo_redo.png'), fullPage: true })
-  expect(validations).toBe(1)
+  await expect(page.getByLabel('Chord value 3')).toHaveValue('64')
+  await expect(page.getByText(/Canonical design preview is current/)).toBeVisible({ timeout: 30_000 })
+  await page.screenshot({ path: evidence('noop_preserves_redo.png'), fullPage: true })
 
   await page.setViewportSize({ width: 720, height: 900 })
   await page.getByRole('button', { name: 'Twist', exact: true }).click()
   const twistMarker = page.getByRole('slider', { name: /Twist Distribution control 4,/ })
-  await dragControlTo(page, twistMarker, 27)
-  await page.mouse.up()
-  await expect.poll(async () => Number(await page.getByLabel('Twist value 4').inputValue())).toBeCloseTo(27, 3)
-  expect(validations).toBe(2)
+  for (const target of [27, 30, 25, 28, 24, 27]) {
+    const beforeValidation = validations
+    const beforePreview = previews
+    await dragControlTo(page, twistMarker, target)
+    expect(validations).toBe(beforeValidation)
+    expect(previews).toBe(beforePreview)
+    await page.mouse.up()
+    await expect.poll(async () => Number(await page.getByLabel('Twist value 4').inputValue())).toBeCloseTo(target, 3)
+    await expect(page.getByText('Ready', { exact: true })).toBeVisible()
+    await expect(page.getByText(/Canonical design preview is current/)).toBeVisible({ timeout: 30_000 })
+    expect(validations).toBe(beforeValidation + 1)
+    expect(previews).toBe(beforePreview + 1)
+  }
+  await page.locator('.distribution-visual').screenshot({ path: evidence('six_consecutive_twist_edits_narrow.png') })
+  expect(validations).toBe(11)
   expect(builds).toBe(0)
 
   await page.getByRole('button', { name: 'Thickness', exact: true }).click()
   await page.getByRole('slider', { name: /Thickness Distribution control 2/ }).click({ force: true })
   await expect(page.getByText(/Enable its explicit thickness override first/).first()).toBeVisible()
-  await page.screenshot({ path: evidence('rejected_thickness.png'), fullPage: true })
-  expect(validations).toBe(2)
+  expect(validations).toBe(11)
   expect(builds).toBe(0)
 
   await page.setViewportSize({ width: 520, height: 900 })

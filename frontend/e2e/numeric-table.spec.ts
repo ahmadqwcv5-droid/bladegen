@@ -8,8 +8,11 @@ test('distribution numbers remain readable and scroll locally on a narrow screen
   await expect(radius).toHaveValue('0.2')
   await expect(radius).toBeVisible()
 
-  const inputWidth = await radius.evaluate(element => element.getBoundingClientRect().width)
-  expect(inputWidth).toBeGreaterThanOrEqual(104)
+  // The initial example load intentionally remounts curve tables. Poll the
+  // live locator so a StrictMode-era detached node cannot report width zero.
+  await expect.poll(
+    () => radius.evaluate(element => element.getBoundingClientRect().width),
+  ).toBeGreaterThanOrEqual(104)
 
   const scroller = page.locator('.distribution-table-scroll').first()
   await expect(scroller).toBeVisible()

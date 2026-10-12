@@ -4,6 +4,7 @@ import type { DistributionPreview } from '../types/bladespec'
 export const CHART_WIDTH = 640
 export const CHART_HEIGHT = 260
 export const CHART_MARGIN = { left: 58, right: 18, top: 18, bottom: 42 } as const
+export const DRAG_THRESHOLD_CSS_PX = 3
 
 export type SvgPoint = { x: number; y: number }
 export type EditableControl = { radius: number; value: number; lockedReason?: string }
@@ -52,6 +53,7 @@ type Props = {
   unit?: string
   step?: number
   stale?: boolean
+  cancelVersion?: number
   onCommit?: (pointIndex: number, value: number) => Promise<boolean>
   onInteractionChange?: (state: ChartInteraction) => void
   onError?: (message: string) => void
@@ -64,6 +66,7 @@ export function DistributionChart({
   unit = data?.unit ?? '',
   step = 1,
   stale = false,
+  cancelVersion = 0,
   onCommit,
   onInteractionChange,
   onError,
@@ -72,9 +75,20 @@ export function DistributionChart({
   const [draft, setDraft] = useState<{ index: number; value: number }>()
   const draftRef = useRef<{ index: number; value: number } | undefined>(undefined)
   const [validating, setValidating] = useState(false)
-  const drag = useRef<{ pointerId: number; index: number; minimum: number; maximum: number } | undefined>(undefined)
-  const mounted = useRef(true)
-  useEffect(() => () => { mounted.current = false; onInteractionChange?.('idle') }, [onInteractionChange])
+  const drag = useRef<{
+    pointerId: number
+    index: number
+    minimum: number
+    maximum: number
+    startClientX: number
+    startClientY: number
+    originalValue: number
+    moved: boolean
+    captureTarget: SVGGElement
+  } | undefined>(undefined)
+  const mounted = useRef(false)
+  const operation = useRef(0)
+  const previousCancelVersion = useRef(cancelVersion)
   const editableControls: EditableControl[] = controls.length ? controls : (data?.controls ?? []).map(([radius, value]) => ({ radius, value }))
 
   const chart = useMemo(() => {
@@ -96,25 +110,65 @@ export function DistributionChart({
     return { minimum, maximum, x0, x1, x, y, plotWidth }
   }, [editableControls, data])
 
-  const finish = async (index: number, value: number) => {
-    draftRef.current = undefined
-    setDraft(undefined)
-    setValidating(true)
-    onInteractionChange?.('validating')
-    const accepted = await onCommit?.(index, value) ?? false
-    if (!mounted.current) return
-    setValidating(false)
-    onInteractionChange?.('idle')
-    if (!accepted) setDraft(undefined)
+  const releaseCapture = () => {
+    const active = drag.current
+    if (!active) return
+    try {
+      if (!active.captureTarget.hasPointerCapture || active.captureTarget.hasPointerCapture(active.pointerId)) {
+        active.captureTarget.releasePointerCapture?.(active.pointerId)
+      }
+    } catch { /* the browser may already have released a cancelled pointer */ }
   }
-  const cancel = (message = 'Curve edit cancelled') => {
+  const resetGesture = (notifyParent = true) => {
+    releaseCapture()
     drag.current = undefined
     draftRef.current = undefined
     setDraft(undefined)
     setValidating(false)
-    onInteractionChange?.('idle')
+    if (notifyParent) onInteractionChange?.('idle')
+  }
+  const cancel = (message = 'Curve edit cancelled') => {
+    operation.current += 1
+    resetGesture()
     onError?.(message)
   }
+  const finish = async (index: number, value: number) => {
+    const transaction = ++operation.current
+    draftRef.current = undefined
+    setDraft(undefined)
+    setValidating(true)
+    onInteractionChange?.('validating')
+    try {
+      await onCommit?.(index, value)
+    } catch (caught) {
+      if (mounted.current && operation.current === transaction) {
+        onError?.(`Curve edit failed: ${caught instanceof Error ? caught.message : String(caught)}`)
+      }
+    } finally {
+      if (mounted.current && operation.current === transaction) {
+        setValidating(false)
+        onInteractionChange?.('idle')
+      }
+    }
+  }
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      operation.current += 1
+      releaseCapture()
+      drag.current = undefined
+      draftRef.current = undefined
+    }
+  }, [])
+
+  useEffect(() => {
+    if (previousCancelVersion.current === cancelVersion) return
+    previousCancelVersion.current = cancelVersion
+    operation.current += 1
+    resetGesture(false)
+  }, [cancelVersion])
   useEffect(() => {
     if (!draft) return
     const keydown = (event: KeyboardEvent) => {
@@ -152,6 +206,11 @@ export function DistributionChart({
         onPointerLeave={() => { if (!drag.current) setHover(undefined) }}
         onPointerMove={event => {
           if (drag.current && event.pointerId === drag.current.pointerId) {
+            if (!drag.current.moved) {
+              const distance = Math.hypot(event.clientX - drag.current.startClientX, event.clientY - drag.current.startClientY)
+              if (distance < DRAG_THRESHOLD_CSS_PX) return
+              drag.current.moved = true
+            }
             const value = valueFromSvgY(clientPointToSvg(event.currentTarget, event.clientX, event.clientY).y, drag.current.minimum, drag.current.maximum)
             draftRef.current = { index: drag.current.index, value }
             setDraft(draftRef.current)
@@ -162,10 +221,17 @@ export function DistributionChart({
           setHover(nearestSampleIndex(data.samples, chart.x0 + fraction * (chart.x1 - chart.x0)))
         }}
         onPointerUp={event => {
+          const active = drag.current
           const pending = draftRef.current
-          if (!drag.current || event.pointerId !== drag.current.pointerId || !pending) return
-          try { event.currentTarget.releasePointerCapture?.(event.pointerId) } catch { /* capture may belong to the marker group */ }
+          if (!active || event.pointerId !== active.pointerId || !pending) return
+          releaseCapture()
           drag.current = undefined
+          if (!active.moved || Object.is(pending.value, active.originalValue)) {
+            draftRef.current = undefined
+            setDraft(undefined)
+            onInteractionChange?.('idle')
+            return
+          }
           void finish(pending.index, pending.value)
         }}
         onPointerCancel={() => cancel()}
@@ -188,7 +254,17 @@ export function DistributionChart({
               if (validating) return
               if (control.lockedReason) { onError?.(control.lockedReason); return }
               event.preventDefault()
-              drag.current = { pointerId: event.pointerId, index, minimum: chart.minimum, maximum: chart.maximum }
+              drag.current = {
+                pointerId: event.pointerId,
+                index,
+                minimum: chart.minimum,
+                maximum: chart.maximum,
+                startClientX: event.clientX,
+                startClientY: event.clientY,
+                originalValue: control.value,
+                moved: false,
+                captureTarget: event.currentTarget,
+              }
               draftRef.current = { index, value: control.value }
               setDraft(draftRef.current)
               onInteractionChange?.('drafting')
