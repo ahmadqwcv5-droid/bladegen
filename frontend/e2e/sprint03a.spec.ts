@@ -25,7 +25,7 @@ test('imported airfoil visual-design workflow produces a validated real STEP', a
 
   const chordLine = page.locator('.chart-line')
   const originalChord = await chordLine.getAttribute('data-values')
-  await page.getByLabel('Chord value 3').fill('0.31')
+  await page.getByLabel('Chord value 3').fill('62')
   await page.getByLabel('Chord value 3').blur()
   await expect.poll(() => chordLine.getAttribute('data-values')).not.toBe(originalChord)
   await page.locator('.distribution-visual').screenshot({ path: evidence('chord_distribution.png') })

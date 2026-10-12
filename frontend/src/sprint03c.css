@@ -1,0 +1,26 @@
+.curve-history-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; min-height: 32px; margin-bottom: 8px; color: #536970; font-size: .78rem; }
+.curve-edit-state { padding: 4px 9px; border: 1px solid #b8c7cb; border-radius: 999px; background: #f6f8f8; font-weight: 800; white-space: nowrap; }
+.curve-edit-state.drafting { color: #7c3d20; border-color: #d79070; background: #fff3ed; }
+.curve-edit-state.validating { color: #174d61; border-color: #70a7b9; background: #edf8fb; }
+.chart-hit-target { fill: transparent; stroke: none; pointer-events: all; }
+.chart-hover { pointer-events: none; }
+.chart-marker { cursor: ns-resize; }
+.chart-marker.locked { cursor: not-allowed; opacity: .62; }
+.chart-control { transition: r .12s, stroke-width .12s; outline: none; }
+.chart-control:hover,.chart-control:focus { r: 7px; stroke-width: 4; filter: drop-shadow(0 0 3px rgba(23,77,97,.35)); }
+.chart-control.draft { fill: #fff3ed; stroke: #bb5b32; r: 7px; }
+.canonical-stale .chart-line { stroke-dasharray: 7 5; opacity: .7; }
+.canonical-stale .section-title span { color: #925137; }
+.curve-lock-reason { display: block; max-width: 220px; margin-top: 4px; color: #87503a; line-height: 1.25; }
+.curve-point-locked { background: #faf7f5; }
+.distribution-chart svg { touch-action: none; }
+.actions { flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 720px) {
+  .curve-history-toolbar { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .distribution-chart svg { min-height: 230px; }
+}
+@media (max-width: 540px) {
+  .distribution-chart { margin-inline: -8px; }
+  .distribution-chart svg { min-height: 210px; }
+  .distribution-table th,.distribution-table td { padding: 5px 3px; }
+}

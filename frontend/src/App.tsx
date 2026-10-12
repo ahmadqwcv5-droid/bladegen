@@ -18,6 +18,13 @@ import { DistributionTable } from './components/DistributionTable'
 import { NumericInput } from './components/NumericInput'
 import { applyAirfoilProfile } from './editor/airfoilSelection'
 import {
+  CURVES,
+  CurveHistory,
+  replaceCurvePoint,
+  storedToDisplay,
+  thicknessControlLock,
+} from './editor/curveEditing'
+import {
   addAirfoilStation,
   canonicalJson,
   clearThicknessOverride,
@@ -39,20 +46,14 @@ import type {
   Distribution,
   Job,
 } from './types/bladespec'
+import type { ChartInteraction } from './components/DistributionChart'
 import './styles.css'
 import './sprint02.css'
 import './sprint02_1.css'
 import './patch02_1_1.css'
 import './sprint03a.css'
 import './sprint03b.css'
-
-const curves: [keyof BladeSpec, string, string, keyof DesignPreview['distributions']][] = [
-  ['chord_distribution', 'Chord', 'chord_over_R', 'chord'],
-  ['twist_distribution', 'Twist', 'twist_deg', 'twist'],
-  ['rake_distribution', 'Rake', 'rake_over_R', 'rake'],
-  ['skew_distribution', 'Skew', 'skew_over_R', 'skew'],
-  ['thickness_distribution', 'Thickness', 'thickness_ratio', 'thickness'],
-]
+import './sprint03c.css'
 
 type StationResult = {
   requested_r_over_R: number
@@ -129,14 +130,32 @@ export default function App() {
   const [comparisonBId, setComparisonBId] = useState('')
   const [selectorStation, setSelectorStation] = useState<number>()
   const [activeDistribution, setActiveDistribution] = useState<keyof DesignPreview['distributions']>('chord')
+  const [curveInteraction, setCurveInteraction] = useState<ChartInteraction>('idle')
+  const [, setHistoryVersion] = useState(0)
   const activeJobId = useRef<string | undefined>(undefined)
   const submissionPending = useRef(false)
   const submissionSnapshots = useRef(new Map<string, string>())
   const previewRevision = useRef(0)
+  const curveValidationRevision = useRef(0)
+  const curveHistory = useRef(new CurveHistory(50))
+  const specRef = useRef<BladeSpec | undefined>(undefined)
   const fileInput = useRef<HTMLInputElement>(null)
   const selectedStation = Math.max(rowIds.indexOf(selectedStationId), 0)
+  specRef.current = spec
+
+  const refreshHistory = () => setHistoryVersion(value => value + 1)
+  const cancelCurveWork = () => {
+    curveValidationRevision.current += 1
+    setCurveInteraction('idle')
+  }
+  const clearCurveHistory = () => {
+    curveHistory.current.clear()
+    refreshHistory()
+  }
 
   const load = (next: BladeSpec, remember = false) => {
+    cancelCurveWork()
+    clearCurveHistory()
     const ids = newIds(next.airfoil_sections.length)
     setSpec(structuredClone(next))
     setRowIds(ids)
@@ -194,6 +213,43 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [activeJob])
 
+  const undoCurveEdit = () => {
+    cancelCurveWork()
+    const current = specRef.current
+    if (!current) return
+    const next = curveHistory.current.undo(current)
+    refreshHistory()
+    if (!next) return
+    setSpec(next)
+    setErrors(validateEditorSpec(next))
+    setMessage('Curve edit undone; canonical preview updating')
+  }
+  const redoCurveEdit = () => {
+    cancelCurveWork()
+    const current = specRef.current
+    if (!current) return
+    const next = curveHistory.current.redo(current)
+    refreshHistory()
+    if (!next) return
+    setSpec(next)
+    setErrors(validateEditorSpec(next))
+    setMessage('Curve edit redone; canonical preview updating')
+  }
+
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return
+      const command = event.ctrlKey || event.metaKey
+      if (!command) return
+      if (event.key.toLowerCase() === 'z' && event.shiftKey) { event.preventDefault(); redoCurveEdit() }
+      else if (event.key.toLowerCase() === 'z') { event.preventDefault(); undoCurveEdit() }
+      else if (event.key.toLowerCase() === 'y') { event.preventDefault(); redoCurveEdit() }
+    }
+    window.addEventListener('keydown', keydown)
+    return () => window.removeEventListener('keydown', keydown)
+  })
+
   useEffect(() => {
     if (activeJob?.status !== 'succeeded' || activeJobId.current !== activeJob.job_id) return
     const id = activeJob.job_id
@@ -223,6 +279,7 @@ export default function App() {
   const revision = useMemo(() => spec ? canonicalJson(spec) : '', [spec])
   const stale = Boolean(displayedResult && displayedResult.submitted_bladespec_snapshot !== revision)
   const busy = submitting || activeJob?.status === 'queued' || activeJob?.status === 'running'
+  const curveBusy = curveInteraction !== 'idle'
   const designPreviewCurrent = Boolean(designPreview && designPreviewSnapshot === revision && !designPreviewLoading && !designPreviewError)
   const currentDesignPreview = designPreviewCurrent ? designPreview : undefined
   const stationGuides = useMemo<StationGuide[]>(() => {
@@ -254,8 +311,55 @@ export default function App() {
   if (!spec) return <main><h1>BladeGen</h1><p>{message}</p></main>
 
   const update = (next: BladeSpec) => {
+    cancelCurveWork()
+    clearCurveHistory()
     setSpec(next)
     setErrors(validateEditorSpec(next))
+  }
+  const commitCurveCandidate = async (candidate: BladeSpec, label: string): Promise<boolean> => {
+    const before = specRef.current
+    if (!before || curveInteraction === 'validating') return false
+    const local = validateEditorSpec(candidate)
+    if (local.length) {
+      setErrors(local)
+      setMessage(`Curve edit rejected: ${local[0]}`)
+      setCurveInteraction('idle')
+      return false
+    }
+    const token = ++curveValidationRevision.current
+    const beforeSnapshot = canonicalJson(before)
+    setCurveInteraction('validating')
+    setErrors([])
+    setMessage(`Validating ${label}…`)
+    try {
+      await validateBackend(candidate)
+      if (curveValidationRevision.current !== token || !specRef.current || canonicalJson(specRef.current) !== beforeSnapshot) return false
+      curveHistory.current.push({ before, after: candidate, label })
+      refreshHistory()
+      setSpec(structuredClone(candidate))
+      setErrors([])
+      setMessage(`${label} committed; canonical preview updating`)
+      return true
+    } catch (error) {
+      if (curveValidationRevision.current !== token) return false
+      const detail = error instanceof Error ? error.message : String(error)
+      setErrors([`Curve edit rejected by backend: ${detail}`])
+      setMessage(`Curve edit rejected: ${detail}`)
+      return false
+    } finally {
+      if (curveValidationRevision.current === token) setCurveInteraction('idle')
+    }
+  }
+  const commitCurvePoint = (definition: typeof CURVES[number], index: number, displayed: number) => {
+    try {
+      return commitCurveCandidate(replaceCurvePoint(spec, definition, index, displayed), `${definition.title} control edit`)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      setErrors([detail])
+      setMessage(`Curve edit rejected: ${detail}`)
+      setCurveInteraction('idle')
+      return Promise.resolve(false)
+    }
   }
   const field = <K extends keyof BladeSpec>(key: K, value: BladeSpec[K]) => update({ ...spec, [key]: value })
   const updateSection = (index: number, change: Partial<AirfoilSection>) => update({
@@ -413,13 +517,21 @@ export default function App() {
       : !designPreviewCurrent
         ? 'Station guides hidden until the canonical preview for this revision is current.'
         : 'Visual radial-location guides derived from the current design; they are not extracted STEP cross-sections.'
-  const activeCurve = curves.find(([, , , name]) => name === activeDistribution)!
+  const activeCurve = CURVES.find(curve => curve.name === activeDistribution)!
+  const activeControls = (spec[activeCurve.key] as Distribution).points.map(point => ({
+    radius: point.r_over_R,
+    value: storedToDisplay(activeCurve.name, point[activeCurve.valueKey], spec.diameter_mm),
+    lockedReason: activeCurve.name === 'thickness' ? thicknessControlLock(spec, point.r_over_R) : undefined,
+  }))
+  const chartPreview = designPreview?.distributions[activeDistribution]
+  const chartPreviewStale = Boolean(chartPreview && designPreviewSnapshot !== revision)
+  const historyStatus = `${curveHistory.current.canUndo ? `Undo ${curveHistory.current.undoLabel}` : 'Nothing to undo'} · ${curveHistory.current.canRedo ? `Redo ${curveHistory.current.redoLabel}` : 'Nothing to redo'}`
 
   return (
     <main>
       <header>
         <div>
-          <p className="eyebrow">LEVEL 1 · SPRINT 03B</p>
+          <p className="eyebrow">LEVEL 1 · SPRINT 03C</p>
           <h1>BladeGen</h1>
           <p>Visual design definition → OpenVSP → independently validated OCP solid</p>
         </div>
@@ -430,8 +542,10 @@ export default function App() {
           <button onClick={exportJson}>Export JSON</button>
           <button onClick={() => baseline && load(baseline)}>Load Example</button>
           <button onClick={reset}>Reset</button>
+          <button aria-label="Undo curve edit" disabled={!curveHistory.current.canUndo || curveBusy} title={historyStatus} onClick={undoCurveEdit}>Undo</button>
+          <button aria-label="Redo curve edit" disabled={!curveHistory.current.canRedo || curveBusy} title={historyStatus} onClick={redoCurveEdit}>Redo</button>
           <button onClick={check}>Validate</button>
-          <button className="primary" disabled={busy} onClick={submit}>{busy ? 'Generating…' : 'Generate Blade'}</button>
+          <button className="primary" disabled={busy || curveBusy} onClick={submit}>{busy ? 'Generating…' : curveInteraction === 'drafting' ? 'Editing curve…' : curveInteraction === 'validating' ? 'Validating curve…' : 'Generate Blade'}</button>
         </div>
       </header>
 
@@ -505,15 +619,30 @@ export default function App() {
           <section>
             <h2>Independent Spanwise Distributions</h2>
             <div className="distribution-visual">
-              <div className="distribution-tabs" role="group" aria-label="Distribution chart selection">{curves.map(([, title, , name]) => <button key={name} aria-pressed={activeDistribution === name} onClick={() => setActiveDistribution(name)}>{title}</button>)}</div>
-              <DistributionChart title={`${activeCurve[1]} Distribution`} data={currentDesignPreview?.distributions[activeDistribution]} />
+              <div className="curve-history-toolbar"><span aria-live="polite">{historyStatus}</span><span className={`curve-edit-state ${curveInteraction}`}>{curveInteraction === 'idle' ? 'Ready' : curveInteraction === 'drafting' ? 'Draft — release to validate' : 'Validating candidate…'}</span></div>
+              <div className="distribution-tabs" role="group" aria-label="Distribution chart selection">{CURVES.map(curve => <button key={curve.name} aria-pressed={activeDistribution === curve.name} onClick={() => { cancelCurveWork(); setActiveDistribution(curve.name) }}>{curve.title}</button>)}</div>
+              <DistributionChart
+                key={activeDistribution}
+                title={`${activeCurve.title} Distribution`}
+                data={chartPreview}
+                controls={activeControls}
+                unit={activeCurve.unit}
+                step={activeCurve.step}
+                stale={chartPreviewStale}
+                onCommit={(index, value) => commitCurvePoint(activeCurve, index, value)}
+                onInteractionChange={setCurveInteraction}
+                onError={error => setErrors(error ? [error] : [])}
+              />
             </div>
-            <div className="curves">{curves.map(([key, title, valueKey]) => <DistributionTable
-              key={`${String(key)}-${epoch}`}
-              title={title}
-              valueKey={valueKey}
-              value={spec[key] as Distribution}
-              onChange={value => field(key, value as BladeSpec[typeof key])}
+            <div className="curves">{CURVES.map(definition => <DistributionTable
+              key={`${definition.key}-${epoch}`}
+              definition={definition}
+              diameterMm={spec.diameter_mm}
+              value={spec[definition.key]}
+              disabled={curveBusy}
+              lockReason={radius => definition.name === 'thickness' ? thicknessControlLock(spec, radius) : undefined}
+              onPointValue={(index, displayed) => commitCurvePoint(definition, index, displayed)}
+              onChange={(value, label) => commitCurveCandidate({ ...spec, [definition.key]: value }, label)}
               onError={error => setErrors(error ? [error] : [])}
             />)}</div>
           </section>
