@@ -4,6 +4,7 @@ import {
   createStationGuideGroup,
   disposeStationGuideGroup,
   makeStationGuide,
+  StationGuideLayerController,
   STATION_GUIDE_PLANE_NORMAL,
   stationYmm,
 } from './stationGuides'
@@ -68,5 +69,72 @@ describe('station guide coordinates', () => {
     expect(materialSpies).toHaveLength(6)
     geometrySpies.forEach(spy => expect(spy).toHaveBeenCalledOnce())
     materialSpies.forEach(spy => expect(spy).toHaveBeenCalledOnce())
+  })
+
+  it('does not reconstruct semantically unchanged guides from a new array', () => {
+    const scene = new THREE.Scene()
+    const box = new THREE.Box3(new THREE.Vector3(-10, 40, -5), new THREE.Vector3(10, 200, 5))
+    const create = vi.fn(createStationGuideGroup)
+    const dispose = vi.fn(disposeStationGuideGroup)
+    const controller = new StationGuideLayerController(create, dispose)
+    const first = [makeStationGuide('station-3', 2, 400, .6, 'selected')]
+    const equivalent = [makeStationGuide('station-3', 2, 400, .6, 'selected')]
+
+    expect(controller.sync(scene, box, first, true)).toBe(true)
+    const originalLayer = controller.currentLayer()
+    expect(controller.sync(scene, box.clone(), equivalent, true)).toBe(false)
+    expect(controller.currentLayer()).toBe(originalLayer)
+    expect(create).toHaveBeenCalledOnce()
+    expect(dispose).not.toHaveBeenCalled()
+    controller.dispose()
+  })
+
+  it('replaces changed selections, comparison pairs, and model bounds', () => {
+    const scene = new THREE.Scene()
+    const box = new THREE.Box3(new THREE.Vector3(-10, 40, -5), new THREE.Vector3(10, 200, 5))
+    const create = vi.fn(createStationGuideGroup)
+    const dispose = vi.fn(disposeStationGuideGroup)
+    const controller = new StationGuideLayerController(create, dispose)
+    const station3 = [makeStationGuide('station-3', 2, 400, .6, 'selected')]
+    const station4 = [makeStationGuide('station-4', 3, 400, .8, 'selected')]
+    const comparison = [
+      makeStationGuide('station-1', 0, 400, .2, 'A'),
+      makeStationGuide('station-4', 3, 400, .8, 'B'),
+    ]
+
+    controller.sync(scene, box, station3, true)
+    expect(controller.sync(scene, box, station4, true)).toBe(true)
+    expect(controller.sync(scene, box, comparison, true)).toBe(true)
+    expect(controller.sync(scene, box.clone().expandByScalar(5), comparison, true)).toBe(true)
+    expect(create).toHaveBeenCalledTimes(4)
+    expect(dispose).toHaveBeenCalledTimes(3)
+    controller.dispose()
+    expect(dispose).toHaveBeenCalledTimes(4)
+  })
+
+  it('removes and restores guides without touching primary STL resources', () => {
+    const scene = new THREE.Scene()
+    const primaryGeometry = new THREE.BoxGeometry(20, 160, 10)
+    const primaryMaterial = new THREE.MeshBasicMaterial()
+    const geometryDispose = vi.spyOn(primaryGeometry, 'dispose')
+    const materialDispose = vi.spyOn(primaryMaterial, 'dispose')
+    const primary = new THREE.Mesh(primaryGeometry, primaryMaterial)
+    scene.add(primary)
+    const box = new THREE.Box3().setFromObject(primary)
+    const controller = new StationGuideLayerController()
+    const guides = [makeStationGuide('station-3', 2, 400, .6, 'selected')]
+
+    expect(controller.sync(scene, box, guides, true)).toBe(true)
+    expect(controller.sync(scene, box, guides, false)).toBe(true)
+    expect(controller.currentLayer()).toBeUndefined()
+    expect(controller.sync(scene, box, guides, false)).toBe(false)
+    expect(controller.sync(scene, box, guides, true)).toBe(true)
+    expect(scene.children).toContain(primary)
+    expect(geometryDispose).not.toHaveBeenCalled()
+    expect(materialDispose).not.toHaveBeenCalled()
+
+    controller.dispose()
+    primaryGeometry.dispose()
+    primaryMaterial.dispose()
   })
 })

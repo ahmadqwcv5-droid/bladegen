@@ -65,7 +65,9 @@ def _load_openvsp() -> ModuleType:
         root = os.environ.get("OPENVSP_ROOT")
         if not root:
             raise RuntimeError(
-                "OpenVSP Python API not found. Set OPENVSP_ROOT to the official OpenVSP distribution root."
+                "OpenVSP Python API not found. Run ./scripts/setup_openvsp.sh and start the "
+                "backend with ./scripts/start_backend.sh, or set OPENVSP_ROOT to the official "
+                "OpenVSP distribution root."
             )
         python_root = Path(root) / "python"
         for child in ("openvsp", "openvsp_config", "degen_geom", "utilities"):

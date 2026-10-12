@@ -9,15 +9,19 @@ const api = vi.hoisted(() => ({
   getExample: vi.fn(), validate: vi.fn(), build: vi.fn(), getJob: vi.fn(), getArtifacts: vi.fn(),
   getDesignPreview: vi.fn(), getAirfoilCatalog: vi.fn(), getAirfoilProfile: vi.fn(), importAirfoil: vi.fn(),
 }))
+const viewerProbe = vi.hoisted(() => ({ guideRefs: [] as { yMm: number; label: string }[][] }))
 vi.mock('./api/client', () => api)
 vi.mock('./components/BladeViewer', () => ({
-  BladeViewer: ({ url, guides = [], guidesEnabled = false, guideStatus }: { url?: string; guides?: { yMm: number; label: string }[]; guidesEnabled?: boolean; guideStatus?: string }) => <div
-    data-testid="viewer"
-    data-url={url ?? ''}
-    data-guides-enabled={String(guidesEnabled)}
-    data-guide-y={guides.map(guide => guide.yMm).join(',')}
-    data-guide-labels={guides.map(guide => guide.label).join(',')}
-  >{guideStatus}</div>,
+  BladeViewer: ({ url, guides = [], guidesEnabled = false, guideStatus }: { url?: string; guides?: { yMm: number; label: string }[]; guidesEnabled?: boolean; guideStatus?: string }) => {
+    viewerProbe.guideRefs.push(guides)
+    return <div
+      data-testid="viewer"
+      data-url={url ?? ''}
+      data-guides-enabled={String(guidesEnabled)}
+      data-guide-y={guides.map(guide => guide.yMm).join(',')}
+      data-guide-labels={guides.map(guide => guide.label).join(',')}
+    >{guideStatus}</div>
+  },
 }))
 
 const example = exampleJson as unknown as BladeSpec
@@ -74,6 +78,7 @@ const validation = {
 afterEach(cleanup)
 beforeEach(() => {
   vi.clearAllMocks()
+  viewerProbe.guideRefs.length = 0
   api.getExample.mockResolvedValue(structuredClone(example))
   api.validate.mockResolvedValue({ valid: true })
   api.getDesignPreview.mockImplementation(async (spec: BladeSpec) => preview(spec))
@@ -101,6 +106,31 @@ async function generate() {
 }
 
 describe('Sprint 03B station identity and comparison', () => {
+  it('keeps guide references stable for unrelated parent rerenders and invalidates relevant selections', async () => {
+    const user = userEvent.setup()
+    await loadApp()
+    const initial = viewerProbe.guideRefs.at(-1)
+    expect(initial).toBeDefined()
+    viewerProbe.guideRefs.length = 0
+
+    await user.click(screen.getByRole('button', { name: 'Validate' }))
+    await screen.findByText(/input validation passed/i)
+    expect(viewerProbe.guideRefs.length).toBeGreaterThan(0)
+    viewerProbe.guideRefs.forEach(reference => expect(reference).toBe(initial))
+
+    await user.click(screen.getAllByRole('button', { name: 'Inspect' })[2])
+    const selectedStation = viewerProbe.guideRefs.at(-1)
+    expect(selectedStation).not.toBe(initial)
+    await user.click(screen.getByRole('button', { name: 'Compare Stations' }))
+    const comparison = viewerProbe.guideRefs.at(-1)
+    expect(comparison).not.toBe(selectedStation)
+    await user.selectOptions(
+      screen.getByLabelText('Comparison Station B'),
+      within(screen.getByLabelText('Comparison Station B')).getByRole('option', { name: /Station 4 · r\/R 0.8000/ }),
+    )
+    expect(viewerProbe.guideRefs.at(-1)).not.toBe(comparison)
+  })
+
   it('keeps the intended station selected through insertion, radius editing, and removal of another row', async () => {
     const user = userEvent.setup()
     await loadApp()

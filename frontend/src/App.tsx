@@ -223,6 +223,33 @@ export default function App() {
   const revision = useMemo(() => spec ? canonicalJson(spec) : '', [spec])
   const stale = Boolean(displayedResult && displayedResult.submitted_bladespec_snapshot !== revision)
   const busy = submitting || activeJob?.status === 'queued' || activeJob?.status === 'running'
+  const designPreviewCurrent = Boolean(designPreview && designPreviewSnapshot === revision && !designPreviewLoading && !designPreviewError)
+  const currentDesignPreview = designPreviewCurrent ? designPreview : undefined
+  const stationGuides = useMemo<StationGuide[]>(() => {
+    if (!spec || !currentDesignPreview) return []
+    const sourceIds = inspectionMode === 'compare'
+      ? [comparisonAId, comparisonBId]
+      : [selectedStationId]
+    return sourceIds
+      .filter((id, index, ids) => Boolean(id) && ids.indexOf(id) === index)
+      .flatMap(id => {
+        const index = rowIds.indexOf(id)
+        const station = currentDesignPreview.stations[index]
+        if (index < 0 || !station) return []
+        const role: StationGuide['role'] = inspectionMode === 'single'
+          ? 'selected'
+          : id === comparisonBId ? 'B' : 'A'
+        return [makeStationGuide(id, index, spec.diameter_mm, station.r_over_R, role)]
+      })
+  }, [
+    comparisonAId,
+    comparisonBId,
+    currentDesignPreview,
+    inspectionMode,
+    rowIds,
+    selectedStationId,
+    spec?.diameter_mm,
+  ])
 
   if (!spec) return <main><h1>BladeGen</h1><p>{message}</p></main>
 
@@ -375,19 +402,9 @@ export default function App() {
   const preview = artifacts.find(artifact => artifact.name === 'blade_preview.stl')
   const solid = displayedResult?.validation_data?.solidification.solid_after_reimport
   const geometry = displayedResult?.validation_data?.geometry_validation
-  const designPreviewCurrent = Boolean(designPreview && designPreviewSnapshot === revision && !designPreviewLoading && !designPreviewError)
-  const currentDesignPreview = designPreviewCurrent ? designPreview : undefined
   const selectedPreview = currentDesignPreview?.stations[selectedStation]
   const profileWarnings = currentDesignPreview?.stations.filter(station => station.diagnostics?.has_warning) ?? []
   const comparisonChoices = currentDesignPreview?.stations.map((station, index) => ({ id: rowIds[index], index, station })).filter(choice => Boolean(choice.id)) ?? []
-  const guideSourceIds = inspectionMode === 'compare' ? [comparisonAId, comparisonBId] : [selectedStationId]
-  const stationGuides: StationGuide[] = guideSourceIds.filter((id, index, ids) => Boolean(id) && ids.indexOf(id) === index).flatMap(id => {
-    const index = rowIds.indexOf(id)
-    const station = currentDesignPreview?.stations[index]
-    if (index < 0 || !station) return []
-    const role: StationGuide['role'] = inspectionMode === 'single' ? 'selected' : id === comparisonBId ? 'B' : 'A'
-    return [makeStationGuide(id, index, spec.diameter_mm, station.r_over_R, role)]
-  })
   const guidesEnabled = Boolean(preview && !stale && designPreviewCurrent)
   const guideStatus = !preview
     ? 'Generate the blade to place station guides on matching CAD.'

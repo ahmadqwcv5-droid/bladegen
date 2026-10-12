@@ -30,8 +30,12 @@ API, cadquery-ocp/OpenCascade 7.9.3.1, Node 24.14.0, and npm 11.9.0.
 cd frontend && npm install && cd ..
 ```
 
-Set `OPENVSP_ROOT` to the unpacked official OpenVSP distribution. The scripts
-also detect this machine's `/tmp/openvsp_root/opt/OpenVSP` installation.
+`setup_backend.sh` installs the pinned official OpenVSP 3.54.0 Ubuntu 24.04
+runtime and `libcminpack1` under the ignored `.tooling/` directory. This is a
+local extraction and does not require root access. To repair or install only
+the CAD runtime, run `./scripts/setup_openvsp.sh`. The launch scripts detect
+this persistent installation automatically. A manually configured
+`OPENVSP_ROOT` remains supported and takes precedence.
 
 ## Run
 
@@ -64,6 +68,9 @@ The normal solid viewer occupies roughly 45% of the desktop workspace. Use
 **Expand Viewer** for the large inspection mode; orbit, pan, zoom, Fit to Model,
 Blade Face, Blade Edge, and Isometric controls remain available. Blade Face is
 the default and is derived from the loaded mesh to reveal its broad surface.
+Preset and fitted views are refitted after container resize while preserving
+their viewing direction. A manually orbited, panned, or zoomed inspection is
+not recentered on resize; use **Fit to Model** to restore complete framing.
 Press Escape or **Restore Viewer** to return without reloading the STL.
 
 Select **Inspect** on any station to link its current canonical 2D definition to a visual XZ guide in the 3D scene. Guide Y is calculated exactly as `(diameter_mm / 2) * r_over_R`; the model bounds only size the overlay. **Compare Stations** overlays canonical source or resolved profiles at equal x/y scale and can show orange A and teal B guides. These guides are visual radial-location aids, not measured STEP cross-sections. If editor inputs differ from the displayed CAD snapshot, the old CAD remains labeled and all current-design guides are hidden until a matching build succeeds.
@@ -71,7 +78,8 @@ Select **Inspect** on any station to link its current canonical 2D definition to
 CLI build:
 
 ```bash
-OPENVSP_ROOT=/tmp/openvsp_root/opt/OpenVSP LD_LIBRARY_PATH=/tmp/cminpack_root/usr/lib/x86_64-linux-gnu .venv/bin/bladegen build \
+source scripts/openvsp_env.sh
+.venv/bin/bladegen build \
   examples/custom_multi_airfoil_finite_te.json --output output/manual
 ```
 

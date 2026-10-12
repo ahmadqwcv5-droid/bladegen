@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import {
+  boxCorners,
   calculateCameraFrame,
   deriveBladeViewDirections,
+  measureBoxProjection,
   radialUp,
 } from './bladeViewerCamera'
 
@@ -49,34 +51,58 @@ describe('blade viewer camera', () => {
     }
   })
 
-  it('fits every box corner in both wide and narrow perspective viewports', () => {
-    const box = new THREE.Box3(
-      new THREE.Vector3(-30, 40, -12),
-      new THREE.Vector3(35, 200, 16),
-    )
-    const direction = new THREE.Vector3(0, 0, 1)
-    const distances: number[] = []
+  const fixtures = {
+    longNarrow: new THREE.Box3(new THREE.Vector3(-30, 40, -12), new THREE.Vector3(35, 200, 16)),
+    shortWide: new THREE.Box3(new THREE.Vector3(-130, -16, -9), new THREE.Vector3(145, 28, 13)),
+    asymmetricOffset: new THREE.Box3(new THREE.Vector3(72, -35, -91), new THREE.Vector3(249, 19, 38)),
+  }
 
-    for (const aspect of [1.8, 0.2]) {
-      const frame = calculateCameraFrame(box, direction, new THREE.Vector3(0, 1, 0), aspect, 40)
-      distances.push(frame.distance)
-      const camera = new THREE.PerspectiveCamera(40, aspect, frame.near, frame.far)
-      camera.position.copy(frame.center).addScaledVector(frame.direction, frame.distance)
-      camera.up.copy(frame.up)
-      camera.lookAt(frame.center)
-      camera.updateMatrixWorld(true)
-      for (const x of [box.min.x, box.max.x]) {
-        for (const y of [box.min.y, box.max.y]) {
-          for (const z of [box.min.z, box.max.z]) {
-            const projected = new THREE.Vector3(x, y, z).project(camera)
-            expect(Math.abs(projected.x)).toBeLessThanOrEqual(1)
-            expect(Math.abs(projected.y)).toBeLessThanOrEqual(1)
-            expect(projected.z).toBeGreaterThanOrEqual(-1)
-            expect(projected.z).toBeLessThanOrEqual(1)
-          }
-        }
+  function fittedCamera(box: THREE.Box3, aspect: number, direction = new THREE.Vector3(.31, .18, 1)) {
+    const frame = calculateCameraFrame(box, direction, radialUp(direction), aspect, 40)
+    const camera = new THREE.PerspectiveCamera(40, aspect, frame.near, frame.far)
+    camera.position.copy(frame.center).addScaledVector(frame.direction, frame.distance)
+    camera.up.copy(frame.up)
+    camera.lookAt(frame.center)
+    camera.updateProjectionMatrix()
+    camera.updateMatrixWorld(true)
+    return { camera, frame, projection: measureBoxProjection(box, camera) }
+  }
+
+  it.each(Object.entries(fixtures))('fits every %s box corner across required viewport transitions', (_, box) => {
+    const direction = new THREE.Vector3(.31, .18, 1).normalize()
+    for (const aspect of [1.8, 1.2, .75, .5]) {
+      const { camera, frame, projection } = fittedCamera(box, aspect, direction)
+      expect(camera.aspect).toBe(aspect)
+      expect(projection.contained).toBe(true)
+      expect(frame.near).toBeGreaterThan(0)
+      expect(frame.far).toBeGreaterThan(frame.near)
+      expect(Math.max(projection.maxAbsX, projection.maxAbsY)).toBeGreaterThan(.7)
+      expect(frame.direction.angleTo(direction)).toBeLessThan(1e-10)
+      for (const corner of boxCorners(box)) {
+        const projected = corner.project(camera)
+        expect(projected.x).toBeGreaterThanOrEqual(-1.000001)
+        expect(projected.x).toBeLessThanOrEqual(1.000001)
+        expect(projected.y).toBeGreaterThanOrEqual(-1.000001)
+        expect(projected.y).toBeLessThanOrEqual(1.000001)
+        expect(projected.z).toBeGreaterThanOrEqual(-1.000001)
+        expect(projected.z).toBeLessThanOrEqual(1.000001)
       }
     }
-    expect(distances[1]).toBeGreaterThan(distances[0])
+  })
+
+  it('refits wide-to-narrow and narrow-to-wide without changing orientation', () => {
+    const box = fixtures.shortWide
+    const direction = new THREE.Vector3(.7, .2, 1).normalize()
+    const wide = fittedCamera(box, 1.8, direction)
+    const narrow = fittedCamera(box, .5, direction)
+    const restored = fittedCamera(box, 1.8, direction)
+
+    expect(narrow.frame.distance).toBeGreaterThan(wide.frame.distance)
+    expect(restored.frame.distance).toBeCloseTo(wide.frame.distance, 10)
+    expect(narrow.frame.direction.angleTo(wide.frame.direction)).toBeLessThan(1e-10)
+    expect(restored.frame.direction.angleTo(wide.frame.direction)).toBeLessThan(1e-10)
+    expect(wide.projection.contained).toBe(true)
+    expect(narrow.projection.contained).toBe(true)
+    expect(restored.projection.contained).toBe(true)
   })
 })
