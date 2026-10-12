@@ -6,18 +6,14 @@ const evidence = (name: string) => path.join(evidenceRoot, name)
 
 async function setBladeCount(page: Page, count: number) {
   const input = page.getByLabel('Number of Blades')
-  await input.fill(String(count))
-  await input.blur()
+  await input.selectOption(String(count))
   await expect(input).toHaveValue(String(count))
 }
 
 async function generate(page: Page, count: number) {
   await setBladeCount(page, count)
   await page.getByRole('button', { name: 'Generate Propeller' }).click()
-  await expect.poll(() => page.getByText(/Active job .* · (queued|running|succeeded) · propeller/).count(), { timeout: 30_000 }).toBe(1)
-  const progress = page.getByRole('progressbar', { name: 'Propeller generation progress' })
-  await expect(progress).toHaveAttribute('aria-valuenow', '100', { timeout: 360_000 })
-  await expect(page.getByText('Assembly validation')).toBeVisible()
+  await expect(page.getByText('Assembly validation')).toBeVisible({ timeout: 360_000 })
   await expect(page.getByText('Overall').locator('..')).toContainText('PASS')
   await expect(page.getByText('Solid / free edges').locator('..')).toContainText('1 / 0')
   await expect(page.getByRole('link', { name: 'propeller_solid.step', exact: true })).toBeVisible()
@@ -41,7 +37,7 @@ test('real full-propeller workflow builds qualified 2/3/4 blade solids and prese
 
   await setBladeCount(page, 2)
   await page.getByRole('button', { name: 'Validate Assembly' }).click()
-  await expect(page.getByText(/PropellerSpec input validation passed/)).toBeVisible()
+  await expect(page.getByText(/Input validation passed; final geometric qualification has not yet run/)).toBeVisible()
   expect(propellerBuilds).toBe(0)
   await generate(page, 2)
   expect(propellerBuilds).toBe(1)

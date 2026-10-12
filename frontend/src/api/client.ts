@@ -5,14 +5,32 @@ import type {
   BladeSpec,
   DesignPreview,
   Job,
+  PropellerCapabilities,
   PropellerSpec,
+  PropellerValidationResponse,
+  ValidationIssue,
 } from '../types/bladespec'
+
+export class ApiError extends Error {
+  issues: ValidationIssue[]
+
+  constructor(message: string, issues: ValidationIssue[] = []) {
+    super(message)
+    this.name = 'ApiError'
+    this.issues = issues
+  }
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, options)
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: response.statusText }))
-    throw new Error(typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail))
+    const detail = typeof body.detail === 'string'
+      ? body.detail
+      : typeof body.detail?.message === 'string'
+        ? body.detail.message
+        : response.statusText
+    throw new ApiError(detail, Array.isArray(body.issues) ? body.issues : [])
   }
   return response.json()
 }
@@ -23,7 +41,8 @@ export const validate = (spec: BladeSpec) => request<Record<string, unknown>>('/
 export const build = (spec: BladeSpec) => request<Job>('/build', {
   method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(spec),
 })
-export const validatePropeller = (spec: PropellerSpec) => request<Record<string, unknown>>('/propellers/validate', {
+export const getPropellerCapabilities = () => request<PropellerCapabilities>('/propellers/capabilities')
+export const validatePropeller = (spec: PropellerSpec) => request<PropellerValidationResponse>('/propellers/validate', {
   method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(spec),
 })
 export const buildPropeller = (spec: PropellerSpec) => request<Job>('/propellers/build', {

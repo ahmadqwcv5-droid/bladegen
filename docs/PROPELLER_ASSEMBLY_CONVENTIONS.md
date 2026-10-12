@@ -37,6 +37,19 @@ extends beyond both hub ends to avoid coincident Boolean end faces.
 
 ## Qualification rules
 
+Before any job or reference-blade generation, the shared lightweight runtime
+policy requires a blade count in 2, 3, 4. PropellerSpec continues to model the
+versioned 2–8 contract range, but 5–8 are explicitly unsupported in this
+release. The same capability tuple is used by API validation/submission, the
+CLI pipeline, and the assembly builder, and is exposed to the UI.
+
+The conservative nominal preflight computes root radius as diameter / 2 times
+root-radius ratio and hub radius as hub diameter / 2, then requires hub radius
+to be strictly greater than root radius. Equality is rejected. This is a
+dynamic screening rule, not structural certification and not proof of a
+successful Boolean. Changing hub length alone cannot close a radial gap. The
+downstream measured checks below remain authoritative.
+
 Each blade must have a positive-volume intersection with the uncut hub. Merely
 touching is rejected. Pairwise blade intersections outside material already
 inside the hub are rejected as unintended collisions. Fusion must yield one
@@ -57,4 +70,3 @@ section of the result.
 FastAPI or React dependency. The CLI exposes both operations. A future desktop
 shell can call either engine operation directly or retain the local API; no
 desktop packaging choice is made in Sprint 04A.
-

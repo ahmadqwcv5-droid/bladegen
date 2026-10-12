@@ -18,8 +18,8 @@ derived STL artifacts.
 - Dynamic airfoil stations plus independently editable distribution controls.
 - Independent chord, twist, rake, skew, and thickness station grids.
 - Physical finite trailing-edge thickness with measured tolerance reporting.
-- BladeSpec JSON new/open/export/reset and stale-build snapshot tracking.
-- Dynamic 2–8 blade-count contract with measured production qualification for 2, 3, and 4 blades in Sprint 04A.
+- Complete BladeSpec and PropellerSpec JSON new/open/export/reset with atomic import, complete project baselines, and stale-build snapshot tracking.
+- A 2–8 blade-count contract with one shared runtime capability policy; 2, 3, and 4 are the only qualified build choices in this release.
 - Simple cylindrical X-axis hub, positive-volume root connections, unintended-collision rejection, and coaxial through-bore.
 - One valid closed STEP solid, OCP preview STL, and separate blade/assembly machine-readable validation.
 
@@ -71,6 +71,21 @@ assembly input marks the displayed result stale. Propeller mode shows front
 (along X), side, isometric, fit, and expanded-view controls; single-blade radial
 station guides are deliberately disabled for the rotated assembly.
 
+The assembly card shows the nominal blade-root radius, current hub radius,
+radial gap/overlap, and the strict exclusive hub-diameter bound. Hub length
+controls axial extent and cannot close a radial gap. These editing-time values
+are guidance; the backend repeats authoritative preflight and a passing result
+does not replace measured CAD intersection/fusion checks. Runtime capabilities
+come from GET /api/propellers/capabilities, so unsupported counts 5–8 are
+rejected before a job is queued or OpenVSP is launched.
+
+**Open JSON** identifies BladeSpec versus PropellerSpec from document structure.
+A PropellerSpec restores its name, complete nested blade, and every assembly
+input in Full Propeller mode. Invalid files leave the current project unchanged.
+**Reset** restores the whole imported/new/example baseline. Current draft
+validity, active generation, and the last successful result are shown
+separately, so rejected new inputs never relabel prior CAD.
+
 Build jobs are serialized and isolated in child
 processes. Outputs live under `output/runs/<job_id>/`.
 
@@ -110,6 +125,15 @@ source scripts/openvsp_env.sh
   examples/propeller_three_blade.json --output output/propeller_three
 ```
 
+The Sprint 04A.1 regression case uses a 400 mm blade with a two-blade 90 × 30 mm
+hub and 12 mm bore:
+
+```bash
+source scripts/openvsp_env.sh
+.venv/bin/bladegen build-propeller \
+  examples/propeller_two_blade_hub_90x30.json --output output/propeller_90x30
+```
+
 The HTTP equivalents are `POST /api/propellers/validate` and
 `POST /api/propellers/build`; job status and allow-listed downloads continue to
 use `/api/jobs/{job_id}` and `/api/jobs/{job_id}/artifacts`.
@@ -139,6 +163,10 @@ and [acceptance matrix](docs/SPRINT_03A_ACCEPTANCE_MATRIX.md). Sprint 03B intera
 Sprint 04A full-propeller geometry, measured 2/3/4-blade acceptance, and known
 qualification limits are documented in the [Sprint 04A report](docs/SPRINT_04A_REPORT.md)
 and [acceptance matrix](docs/SPRINT_04A_ACCEPTANCE_MATRIX.md).
+Dynamic assembly preflight, result-state separation, runtime capabilities, and
+complete project save/open are documented in the
+[Patch 04A.1 report](docs/PATCH_04A_1_REPORT.md) and
+[acceptance matrix](docs/PATCH_04A_1_ACCEPTANCE_MATRIX.md).
 
 ## Limitations and licensing
 
