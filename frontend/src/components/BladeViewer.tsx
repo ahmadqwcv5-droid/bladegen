@@ -8,6 +8,11 @@ import {
   radialUp,
   type BladeViewDirections,
 } from './bladeViewerCamera'
+import {
+  createStationGuideGroup,
+  disposeStationGuideGroup,
+  type StationGuide,
+} from './stationGuides'
 
 type ViewMode = 'face' | 'edge' | 'isometric'
 
@@ -30,15 +35,49 @@ const defaultDirections = (): BladeViewDirections => ({
   edge: new THREE.Vector3(1, 0, 0),
 })
 
-export function BladeViewer({ url, onError }: { url?: string; onError?: (message: string) => void }) {
+export function BladeViewer({
+  url,
+  onError,
+  guides = [],
+  guidesEnabled = false,
+  guideStatus,
+}: {
+  url?: string
+  onError?: (message: string) => void
+  guides?: StationGuide[]
+  guidesEnabled?: boolean
+  guideStatus?: string
+}) {
   const host = useRef<HTMLDivElement>(null)
   const actions = useRef<ViewActions>(emptyActions())
   const errorCallback = useRef(onError)
+  const sceneRef = useRef<THREE.Scene | undefined>(undefined)
+  const modelBoxRef = useRef<THREE.Box3 | undefined>(undefined)
+  const guideLayerRef = useRef<THREE.Group | undefined>(undefined)
+  const guidesRef = useRef(guides)
+  const guidesEnabledRef = useRef(guidesEnabled)
+  const showGuidesRef = useRef(true)
   const [state, setState] = useState<'empty' | 'loading' | 'ready' | 'error'>(url ? 'loading' : 'empty')
   const [expanded, setExpanded] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('face')
+  const [showGuides, setShowGuides] = useState(true)
+
+  const syncGuides = () => {
+    disposeStationGuideGroup(guideLayerRef.current)
+    guideLayerRef.current = undefined
+    if (!sceneRef.current || !modelBoxRef.current || !guidesEnabledRef.current || !showGuidesRef.current) return
+    const layer = createStationGuideGroup(guidesRef.current, modelBoxRef.current)
+    sceneRef.current.add(layer)
+    guideLayerRef.current = layer
+  }
 
   useEffect(() => { errorCallback.current = onError }, [onError])
+  useEffect(() => {
+    guidesRef.current = guides
+    guidesEnabledRef.current = guidesEnabled
+    showGuidesRef.current = showGuides
+    syncGuides()
+  }, [guides, guidesEnabled, showGuides])
   useEffect(() => {
     if (!expanded) return
     const escape = (event: KeyboardEvent) => {
@@ -64,6 +103,7 @@ export function BladeViewer({ url, onError }: { url?: string; onError?: (message
     errorCallback.current?.('')
 
     const scene = new THREE.Scene()
+    sceneRef.current = scene
     scene.background = new THREE.Color(0x101820)
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 5000)
     scene.add(camera)
@@ -83,13 +123,7 @@ export function BladeViewer({ url, onError }: { url?: string; onError?: (message
     const frameModel = (requestedDirection: THREE.Vector3, requestedUp: THREE.Vector3) => {
       if (!mesh || disposed) return
       const box = new THREE.Box3().setFromObject(mesh)
-      const fitted = calculateCameraFrame(
-        box,
-        requestedDirection,
-        requestedUp,
-        camera.aspect,
-        camera.fov,
-      )
+      const fitted = calculateCameraFrame(box, requestedDirection, requestedUp, camera.aspect, camera.fov)
       controls.target.copy(fitted.center)
       camera.position.copy(fitted.center).addScaledVector(fitted.direction, fitted.distance)
       camera.up.copy(fitted.up)
@@ -116,10 +150,7 @@ export function BladeViewer({ url, onError }: { url?: string; onError?: (message
       },
       isometric: () => {
         setViewMode('isometric')
-        const direction = directions.face.clone()
-          .addScaledVector(directions.edge, 0.55)
-          .add(new THREE.Vector3(0, 0.25, 0))
-          .normalize()
+        const direction = directions.face.clone().addScaledVector(directions.edge, .55).add(new THREE.Vector3(0, .25, 0)).normalize()
         frameModel(direction, radialUp(direction))
       },
     }
@@ -131,7 +162,6 @@ export function BladeViewer({ url, onError }: { url?: string; onError?: (message
       camera.aspect = width / height
       camera.updateProjectionMatrix()
       renderer.setSize(width, height, false)
-      if (mesh) frameModel(currentDirection(), camera.up)
     }
     const observer = new ResizeObserver(resize)
     observer.observe(element)
@@ -146,11 +176,10 @@ export function BladeViewer({ url, onError }: { url?: string; onError?: (message
         }
         geometry.computeVertexNormals()
         directions = deriveBladeViewDirections(geometry)
-        mesh = new THREE.Mesh(
-          geometry,
-          new THREE.MeshStandardMaterial({ color: 0xd8dde3, metalness: 0.12, roughness: 0.5 }),
-        )
+        mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0xd8dde3, metalness: .12, roughness: .5 }))
         scene.add(mesh)
+        modelBoxRef.current = new THREE.Box3().setFromObject(mesh)
+        syncGuides()
         actions.current.face()
         setState('ready')
       },
@@ -176,10 +205,12 @@ export function BladeViewer({ url, onError }: { url?: string; onError?: (message
       cancelAnimationFrame(frame)
       observer.disconnect()
       controls.dispose()
+      disposeStationGuideGroup(guideLayerRef.current)
+      guideLayerRef.current = undefined
+      modelBoxRef.current = undefined
+      sceneRef.current = undefined
       scene.traverse(object => {
-        if ('geometry' in object && object.geometry instanceof THREE.BufferGeometry) {
-          object.geometry.dispose()
-        }
+        if ('geometry' in object && object.geometry instanceof THREE.BufferGeometry) object.geometry.dispose()
         if ('material' in object) {
           const material = object.material as THREE.Material | THREE.Material[]
           if (Array.isArray(material)) material.forEach(value => value.dispose())
@@ -193,18 +224,18 @@ export function BladeViewer({ url, onError }: { url?: string; onError?: (message
     }
   }, [url])
 
+  const visibleGuides = guidesEnabled && showGuides ? guides : []
   return (
-    <div
-      className={`viewer-shell ${expanded ? 'expanded' : ''}`}
-      role={expanded ? 'dialog' : undefined}
-      aria-modal={expanded || undefined}
-      aria-label={expanded ? 'Expanded blade viewer' : undefined}
-      data-view={viewMode}
-    >
+    <div className={`viewer-shell ${expanded ? 'expanded' : ''}`} role={expanded ? 'dialog' : undefined} aria-modal={expanded || undefined} aria-label={expanded ? 'Expanded blade viewer' : undefined} data-view={viewMode} data-guide-count={visibleGuides.length}>
       <div className="viewer-host" ref={host}>
         {!url && <p>Generate a blade to load its OCP-derived STL preview.</p>}
         {state === 'loading' && <p className="viewer-overlay">Loading preview…</p>}
         {state === 'error' && <p className="viewer-overlay error">Preview failed to load</p>}
+      </div>
+      <div className="station-guide-controls">
+        <label className="inline"><input type="checkbox" checked={showGuides} onChange={event => setShowGuides(event.target.checked)} /> Show Station Guides</label>
+        {guideStatus && <p className={!guidesEnabled ? 'station-guide-stale' : 'hint'}>{guideStatus}</p>}
+        {visibleGuides.length > 0 && <ul className="station-guide-legend" aria-label="Station guide legend">{visibleGuides.map(guide => <li key={guide.id} style={{ '--guide-color': `#${guide.color.toString(16).padStart(6, '0')}` } as React.CSSProperties} data-world-y-mm={guide.yMm.toFixed(6)}><strong>{guide.label}</strong>: r/R {guide.rOverR.toFixed(4)} · Y {guide.yMm.toFixed(3)} mm</li>)}</ul>}
       </div>
       <div className="viewer-tools">
         <span>{state === 'ready' ? 'OCP solid preview' : state === 'loading' ? 'Loading preview…' : ''}</span>
