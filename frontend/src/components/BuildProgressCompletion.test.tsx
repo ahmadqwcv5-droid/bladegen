@@ -8,6 +8,7 @@ afterEach(() => cleanup())
 function job(status: Job['status'], progress: number): Job {
   return {
     job_id: 'f'.repeat(32),
+    build_type: 'blade',
     status,
     stage: status === 'succeeded' ? 'complete' : 'confirmation',
     stage_label: status === 'succeeded' ? 'Build complete' : 'Awaiting build confirmation',

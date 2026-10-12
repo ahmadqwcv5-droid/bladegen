@@ -16,9 +16,24 @@ export type BladeSpec = {
   rake_distribution: Distribution; skew_distribution: Distribution
   thickness_distribution: Distribution
 }
+export type AssemblySpec = {
+  blade_count: number
+  hub_diameter_mm: number
+  hub_length_mm: number
+  shaft_bore_diameter_mm: number
+  initial_azimuth_deg: number
+}
+export type PropellerSpec = {
+  schema_version: '0.1'
+  name: string
+  units: 'mm'
+  blade_spec: BladeSpec
+  assembly: AssemblySpec
+}
 export type Artifact = { name: string; size_bytes: number; download_url: string }
 export type Job = {
   job_id: string
+  build_type: 'blade'|'propeller'
   status: 'queued'|'running'|'succeeded'|'failed'
   stage: string
   stage_label: string

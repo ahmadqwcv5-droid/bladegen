@@ -75,6 +75,11 @@ def _volume_properties(shape, tolerance: float = ADAPTIVE_VOLUME_TOLERANCE) -> d
     }
 
 
+def volume_properties(shape, tolerance: float = ADAPTIVE_VOLUME_TOLERANCE) -> dict:
+    """Public adaptive mass-properties interface shared by assembly validation."""
+    return _volume_properties(shape, tolerance)
+
+
 def _bbox(shape) -> dict:
     box = Bnd_Box()
     BRepBndLib.AddOptimal_s(shape, box)
@@ -84,6 +89,11 @@ def _bbox(shape) -> dict:
         "max_mm": [float(xmax), float(ymax), float(zmax)],
         "extent_mm": [float(xmax - xmin), float(ymax - ymin), float(zmax - zmin)],
     }
+
+
+def bounding_box(shape) -> dict:
+    """Public optimal bounding box interface shared by assembly validation."""
+    return _bbox(shape)
 
 
 def _edge_status(shape) -> tuple[int, int, dict[str, int]]:
@@ -143,6 +153,16 @@ def write_stl(shape, output_path: Path, linear_deflection_mm: float = 0.1) -> No
         raise RuntimeError("OpenCascade STL export failed")
 
 
+def write_step(shape, output_path: Path) -> None:
+    """Write one authoritative manifold-solid STEP using the established policy."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    writer = STEPControl_Writer()
+    if writer.Transfer(shape, STEPControl_ManifoldSolidBrep) != IFSelect_RetDone:
+        raise RuntimeError("STEPControl_Writer transfer failed")
+    if writer.Write(str(output_path)) != IFSelect_RetDone:
+        raise RuntimeError("STEPControl_Writer write failed")
+
+
 def solidify_step(source_step: Path, output_step: Path, tolerance_mm: float = 1e-9) -> dict:
     source = read_step(source_step)
     source_faces = shapes(source, TopAbs_FACE)
@@ -172,12 +192,7 @@ def solidify_step(source_step: Path, output_step: Path, tolerance_mm: float = 1e
     if before["solids"] != 1 or not before["brepcheck_valid"]:
         raise RuntimeError("Created solid is invalid")
 
-    output_step.parent.mkdir(parents=True, exist_ok=True)
-    writer = STEPControl_Writer()
-    if writer.Transfer(solid, STEPControl_ManifoldSolidBrep) != IFSelect_RetDone:
-        raise RuntimeError("STEPControl_Writer transfer failed")
-    if writer.Write(str(output_step)) != IFSelect_RetDone:
-        raise RuntimeError("STEPControl_Writer write failed")
+    write_step(solid, output_step)
 
     reimported = inspect_shape(read_step(output_step))
     bbox_delta = max(

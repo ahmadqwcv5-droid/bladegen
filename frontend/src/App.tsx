@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  build,
+  build as buildBlade,
+  buildPropeller,
   getArtifacts,
   getDesignPreview,
   getExample,
   getJob,
   validate as validateBackend,
+  validatePropeller,
 } from './api/client'
 import { AirfoilComparison } from './components/AirfoilComparison'
 import { AirfoilInspector } from './components/AirfoilInspector'
@@ -40,11 +42,13 @@ import {
 import type {
   AirfoilProfile,
   AirfoilSection,
+  AssemblySpec,
   Artifact,
   BladeSpec,
   DesignPreview,
   Distribution,
   Job,
+  PropellerSpec,
 } from './types/bladespec'
 import type { ChartInteraction } from './components/DistributionChart'
 import './styles.css'
@@ -54,6 +58,7 @@ import './patch02_1_1.css'
 import './sprint03a.css'
 import './sprint03b.css'
 import './sprint03c.css'
+import './sprint04a.css'
 
 type StationResult = {
   requested_r_over_R: number
@@ -69,7 +74,7 @@ type StationResult = {
 }
 
 type ValidationResult = {
-  solidification: {
+  solidification?: {
     solid_after_reimport: {
       solids: number
       closed_shell: boolean
@@ -93,11 +98,41 @@ type ValidationResult = {
     tip_measurement: { requested_r_over_R: number; measured_r_over_R: number }
     stations: StationResult[]
   }
+  assembly_validation?: {
+    passed: boolean
+    requested_blade_count: number
+    actual_blade_placement_count: number
+    azimuth_angles_deg: number[]
+    rotation_axis: number[]
+    hub_diameter_mm: number
+    hub_length_mm: number
+    shaft_bore_diameter_mm: number
+    hub_blade_overlap_mm3: number[]
+    maximum_copy_volume_delta_mm3: number
+    bore: {
+      requested_radius_mm: number
+      measured_radii_mm: number[]
+      maximum_radius_error_mm: number | null
+      continuous_through_hole: boolean
+      residual_material_volume_mm3: number
+    }
+    final_after_reimport: {
+      solids: number
+      shells: number
+      closed_shell: boolean
+      brepcheck_valid: boolean
+      free_edges: number
+      volume_mm3: number
+      volume_method: string
+    }
+    roundtrip: { passed: boolean; volume_delta_mm3: number; bbox_max_abs_delta_mm: number }
+  }
 }
 
 type DisplayedResult = {
   job_id: string
-  submitted_bladespec_snapshot: string
+  build_type: 'blade' | 'propeller'
+  submitted_snapshot: string
   artifacts: Artifact[]
   validation_data?: ValidationResult
   completed_at: string
@@ -120,6 +155,14 @@ export default function App() {
   const [displayedResult, setDisplayedResult] = useState<DisplayedResult>()
   const [submitting, setSubmitting] = useState(false)
   const [cadPreviewError, setCadPreviewError] = useState('')
+  const [designMode, setDesignMode] = useState<'blade' | 'propeller'>('blade')
+  const [assembly, setAssembly] = useState<AssemblySpec>({
+    blade_count: 3,
+    hub_diameter_mm: 90,
+    hub_length_mm: 45,
+    shaft_bore_diameter_mm: 12,
+    initial_azimuth_deg: 0,
+  })
   const [designPreview, setDesignPreview] = useState<DesignPreview>()
   const [designPreviewSnapshot, setDesignPreviewSnapshot] = useState('')
   const [designPreviewLoading, setDesignPreviewLoading] = useState(false)
@@ -135,7 +178,7 @@ export default function App() {
   const [, setHistoryVersion] = useState(0)
   const activeJobId = useRef<string | undefined>(undefined)
   const submissionPending = useRef(false)
-  const submissionSnapshots = useRef(new Map<string, string>())
+  const submissionSnapshots = useRef(new Map<string, { snapshot: string; buildType: 'blade' | 'propeller' }>())
   const previewRevision = useRef(0)
   const curveValidationRevision = useRef(0)
   const curveHistory = useRef(new CurveHistory(50))
@@ -256,8 +299,8 @@ export default function App() {
   useEffect(() => {
     if (activeJob?.status !== 'succeeded' || activeJobId.current !== activeJob.job_id) return
     const id = activeJob.job_id
-    const snapshot = submissionSnapshots.current.get(id)
-    if (!snapshot) return
+    const submission = submissionSnapshots.current.get(id)
+    if (!submission) return
     getArtifacts(id)
       .then(async items => {
         if (activeJobId.current !== id) return
@@ -268,19 +311,33 @@ export default function App() {
         if (activeJobId.current !== id) return
         setDisplayedResult({
           job_id: id,
-          submitted_bladespec_snapshot: snapshot,
+          build_type: submission.buildType,
+          submitted_snapshot: submission.snapshot,
           artifacts: items,
           validation_data: validation,
           completed_at: new Date().toISOString(),
         })
         setCadPreviewError('')
-        setMessage('Build, STEP topology, and independent geometry validation passed')
+        setMessage(submission.buildType === 'propeller'
+          ? 'Propeller assembly, STEP topology, bore, and placement validation passed'
+          : 'Build, STEP topology, and independent geometry validation passed')
       })
       .catch(error => { if (activeJobId.current === id) setMessage(`Artifact loading failure: ${String(error)}`) })
   }, [activeJob])
 
   const revision = useMemo(() => spec ? canonicalJson(spec) : '', [spec])
-  const stale = Boolean(displayedResult && displayedResult.submitted_bladespec_snapshot !== revision)
+  const propellerSpec = useMemo<PropellerSpec | undefined>(() => spec ? ({
+    schema_version: '0.1',
+    name: `${spec.name}_propeller`,
+    units: 'mm',
+    blade_spec: spec,
+    assembly,
+  }) : undefined, [assembly, spec])
+  const resultRevision = designMode === 'propeller' ? JSON.stringify(propellerSpec) : revision
+  const stale = Boolean(displayedResult && (
+    displayedResult.build_type !== designMode
+    || displayedResult.submitted_snapshot !== resultRevision
+  ))
   const busy = submitting || activeJob?.status === 'queued' || activeJob?.status === 'running'
   const curveBusy = curveInteraction !== 'idle'
   const designPreviewCurrent = Boolean(designPreview && designPreviewSnapshot === revision && !designPreviewLoading && !designPreviewError)
@@ -366,6 +423,11 @@ export default function App() {
     }
   }
   const field = <K extends keyof BladeSpec>(key: K, value: BladeSpec[K]) => update({ ...spec, [key]: value })
+  const assemblyField = <K extends keyof AssemblySpec>(key: K, value: AssemblySpec[K]) => {
+    setAssembly(current => ({ ...current, [key]: value }))
+    setErrors([])
+    setMessage('Assembly parameters changed; validate or generate explicitly')
+  }
   const updateSection = (index: number, change: Partial<AirfoilSection>) => update({
     ...spec,
     airfoil_sections: spec.airfoil_sections.map((section, current) => current === index ? { ...section, ...change } : section),
@@ -448,21 +510,28 @@ export default function App() {
       setSubmitting(false)
       return
     }
-    setMessage('Validating BladeSpec input…')
+    const propeller = propellerSpec
+    setMessage(designMode === 'propeller' ? 'Validating PropellerSpec input…' : 'Validating BladeSpec input…')
     try {
-      await validateBackend(spec)
+      if (designMode === 'propeller') {
+        if (!propeller) throw new Error('PropellerSpec is unavailable')
+        await validatePropeller(propeller)
+      } else await validateBackend(spec)
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error)
-      setErrors([`Backend BladeSpec validation: ${detail}`])
+      setErrors([`Backend ${designMode === 'propeller' ? 'PropellerSpec' : 'BladeSpec'} validation: ${detail}`])
       setMessage(`Input validation error: ${detail}`)
       submissionPending.current = false
       setSubmitting(false)
       return
     }
     try {
-      const snapshot = canonicalJson(structuredClone(spec))
-      const next = await build(spec)
-      submissionSnapshots.current.set(next.job_id, snapshot)
+      const buildType = designMode
+      const snapshot = buildType === 'propeller'
+        ? JSON.stringify(structuredClone(propeller!))
+        : canonicalJson(structuredClone(spec))
+      const next = buildType === 'propeller' ? await buildPropeller(propeller!) : await buildBlade(spec)
+      submissionSnapshots.current.set(next.job_id, { snapshot, buildType })
       activeJobId.current = next.job_id
       setActiveJob(next)
       setMessage(`Build ${next.job_id.slice(0, 8)} accepted by the CAD worker`)
@@ -478,16 +547,18 @@ export default function App() {
     setErrors(local)
     if (local.length) { setMessage('Input validation failed'); return }
     try {
-      await validateBackend(spec)
-      setMessage('BladeSpec input validation passed; no CAD build was performed')
+      if (designMode === 'propeller') await validatePropeller(propellerSpec!)
+      else await validateBackend(spec)
+      setMessage(`${designMode === 'propeller' ? 'PropellerSpec' : 'BladeSpec'} input validation passed; no CAD build was performed`)
     } catch (error) { setMessage(`Input validation error: ${error instanceof Error ? error.message : String(error)}`) }
   }
   const exportJson = () => {
-    const blob = new Blob([`${JSON.stringify(spec, null, 2)}\n`], { type: 'application/json' })
+    const exported = designMode === 'propeller' ? propellerSpec : spec
+    const blob = new Blob([`${JSON.stringify(exported, null, 2)}\n`], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = `${spec.name || 'blade'}.json`
+    anchor.download = `${designMode === 'propeller' ? propellerSpec?.name || 'propeller' : spec.name || 'blade'}.json`
     anchor.click()
     URL.revokeObjectURL(url)
   }
@@ -507,14 +578,22 @@ export default function App() {
   const createNew = () => { if (window.confirm('Start a new blade from neutral defaults?')) load({ ...structuredClone(baseline ?? spec), name: 'untitled_blade' }) }
 
   const artifacts = displayedResult?.artifacts ?? []
-  const preview = artifacts.find(artifact => artifact.name === 'blade_preview.stl')
-  const solid = displayedResult?.validation_data?.solidification.solid_after_reimport
+  const previewName = displayedResult?.build_type === 'propeller' ? 'propeller_preview.stl' : 'blade_preview.stl'
+  const preview = artifacts.find(artifact => artifact.name === previewName)
+  const assemblyValidation = displayedResult?.validation_data?.assembly_validation
+  const solid = assemblyValidation?.final_after_reimport
+    ?? displayedResult?.validation_data?.solidification?.solid_after_reimport
   const geometry = displayedResult?.validation_data?.geometry_validation
   const selectedPreview = currentDesignPreview?.stations[selectedStation]
   const profileWarnings = currentDesignPreview?.stations.filter(station => station.diagnostics?.has_warning) ?? []
   const comparisonChoices = currentDesignPreview?.stations.map((station, index) => ({ id: rowIds[index], index, station })).filter(choice => Boolean(choice.id)) ?? []
-  const guidesEnabled = Boolean(preview && !stale && designPreviewCurrent)
-  const guideStatus = !preview
+  const guidesEnabled = Boolean(
+    displayedResult?.build_type === 'blade' && designMode === 'blade'
+    && preview && !stale && designPreviewCurrent,
+  )
+  const guideStatus = displayedResult?.build_type === 'propeller' || designMode === 'propeller'
+    ? 'Station guides are disabled for full-propeller preview; inspect stations in Single Blade mode.'
+    : !preview
     ? 'Generate the blade to place station guides on matching CAD.'
     : stale
       ? 'Station guides hidden: displayed CAD belongs to previous inputs. Regenerate to align current stations.'
@@ -535,9 +614,9 @@ export default function App() {
     <main>
       <header>
         <div>
-          <p className="eyebrow">LEVEL 1 · SPRINT 03C</p>
+          <p className="eyebrow">LEVEL 1 · SPRINT 04A</p>
           <h1>BladeGen</h1>
-          <p>Visual design definition → OpenVSP → independently validated OCP solid</p>
+          <p>One validated blade → OCP propeller assembly → independently qualified solid</p>
         </div>
         <div className="actions">
           <button onClick={createNew}>New</button>
@@ -548,13 +627,18 @@ export default function App() {
           <button onClick={reset}>Reset</button>
           <button aria-label="Undo curve edit" disabled={!curveHistory.current.canUndo || curveBusy} title={historyStatus} onClick={undoCurveEdit}>Undo</button>
           <button aria-label="Redo curve edit" disabled={!curveHistory.current.canRedo || curveBusy} title={historyStatus} onClick={redoCurveEdit}>Redo</button>
-          <button onClick={check}>Validate</button>
-          <button className="primary" disabled={busy || curveBusy} onClick={submit}>{busy ? 'Generating…' : curveInteraction === 'drafting' ? 'Editing curve…' : curveInteraction === 'validating' ? 'Validating curve…' : 'Generate Blade'}</button>
+          <button onClick={check}>{designMode === 'propeller' ? 'Validate Assembly' : 'Validate'}</button>
+          <button className="primary" disabled={busy || curveBusy} onClick={submit}>{busy ? 'Generating…' : curveInteraction === 'drafting' ? 'Editing curve…' : curveInteraction === 'validating' ? 'Validating curve…' : designMode === 'propeller' ? 'Generate Propeller' : 'Generate Blade'}</button>
         </div>
       </header>
 
+      <div className="design-mode-tabs" role="group" aria-label="Design mode">
+        <button aria-pressed={designMode === 'blade'} onClick={() => setDesignMode('blade')}>Single Blade</button>
+        <button aria-pressed={designMode === 'propeller'} onClick={() => setDesignMode('propeller')}>Full Propeller</button>
+      </div>
+
       <div className={`status ${stale ? 'stale' : ''}`}>
-        <strong>{activeJob ? `Active job ${activeJob.job_id.slice(0, 8)} · ${activeJob.status}` : 'Editor'}</strong>
+        <strong>{activeJob ? `Active job ${activeJob.job_id.slice(0, 8)} · ${activeJob.status} · ${activeJob.build_type}` : `${designMode === 'propeller' ? 'Full Propeller' : 'Single Blade'} Editor`}</strong>
         {' — '}{message}{stale && <b> · Inputs changed — regenerate to update CAD.</b>}
       </div>
       <BuildProgress job={activeJob} />
@@ -563,6 +647,22 @@ export default function App() {
 
       <div className="layout">
         <div className="editor">
+          {designMode === 'propeller' && <section className="assembly-card">
+            <h2>Propeller Assembly</h2>
+            <p className="hint">Blade count is the number of identical blades around the hub. It does not change the {spec.airfoil_sections.length} radial airfoil sections that define one blade.</p>
+            <div className="grid">
+              <label>Number of Blades<NumericInput label="Number of Blades" step="1" value={assembly.blade_count} onCommit={value => assemblyField('blade_count', value)} /></label>
+              <label>Hub Diameter (mm)<NumericInput label="Hub Diameter" value={assembly.hub_diameter_mm} onCommit={value => assemblyField('hub_diameter_mm', value)} /></label>
+              <label>Hub Length (mm)<NumericInput label="Hub Length" value={assembly.hub_length_mm} onCommit={value => assemblyField('hub_length_mm', value)} /></label>
+              <label>Shaft Bore Diameter (mm)<NumericInput label="Shaft Bore Diameter" value={assembly.shaft_bore_diameter_mm} onCommit={value => assemblyField('shaft_bore_diameter_mm', value)} /></label>
+              <label>Initial Azimuth (deg)<NumericInput label="Initial Azimuth" value={assembly.initial_azimuth_deg} onCommit={value => assemblyField('initial_azimuth_deg', value)} /></label>
+            </div>
+            <div className="assembly-summary" aria-label="Assembly definition summary">
+              <span><strong>{assembly.blade_count}</strong> identical blades</span>
+              <span><strong>X axis</strong> rotation and bore</span>
+              <span><strong>2–4</strong> qualified blade range</span>
+            </div>
+          </section>}
           <section>
             <h2>Global settings</h2>
             <div className="grid">
@@ -654,10 +754,20 @@ export default function App() {
         </div>
 
         <aside>
-          <h2>Solid preview</h2>
-          {displayedResult && <p className={stale ? 'preview-label stale' : 'preview-label'}>Preview from completed job {displayedResult.job_id.slice(0, 8)}{stale ? ' · previous inputs' : ''}</p>}
-          <BladeViewer url={preview?.download_url} onError={setCadPreviewError} guides={stationGuides} guidesEnabled={guidesEnabled} guideStatus={guideStatus} />
+          <h2>{displayedResult?.build_type === 'propeller' ? 'Full propeller preview' : 'Solid preview'}</h2>
+          {displayedResult && <p className={stale ? 'preview-label stale' : 'preview-label'}>Preview from completed job {displayedResult.job_id.slice(0, 8)} · <span className="build-kind">{displayedResult.build_type}</span>{stale ? ' · previous inputs or mode' : ''}</p>}
+          <BladeViewer modelType={displayedResult?.build_type ?? designMode} url={preview?.download_url} onError={setCadPreviewError} guides={stationGuides} guidesEnabled={guidesEnabled} guideStatus={guideStatus} />
           {solid && <><h2>STEP topology</h2><dl><dt>Solid / free edges</dt><dd>{solid.solids} / {solid.free_edges}</dd><dt>Closed / BRep valid</dt><dd>{String(solid.closed_shell)} / {String(solid.brepcheck_valid)}</dd><dt>Adaptive volume</dt><dd>{solid.volume_mm3.toFixed(6)} mm³</dd></dl></>}
+          {assemblyValidation && <><h2>Assembly validation</h2><dl>
+            <dt>Overall</dt><dd>{assemblyValidation.passed ? 'PASS' : 'FAIL'}</dd>
+            <dt>Blades / axis</dt><dd>{assemblyValidation.actual_blade_placement_count} / {assemblyValidation.rotation_axis.join(', ')}</dd>
+            <dt>Azimuths</dt><dd>{assemblyValidation.azimuth_angles_deg.map(value => `${value.toFixed(1)}°`).join(', ')}</dd>
+            <dt>Hub / length / bore</dt><dd>{assemblyValidation.hub_diameter_mm} / {assemblyValidation.hub_length_mm} / {assemblyValidation.shaft_bore_diameter_mm} mm</dd>
+            <dt>Minimum root overlap</dt><dd>{Math.min(...assemblyValidation.hub_blade_overlap_mm3).toFixed(6)} mm³</dd>
+            <dt>Bore radius / obstruction</dt><dd>{assemblyValidation.bore.measured_radii_mm[0]?.toFixed(6)} mm / {assemblyValidation.bore.residual_material_volume_mm3.toExponential(2)} mm³</dd>
+            <dt>Copy volume delta</dt><dd>{assemblyValidation.maximum_copy_volume_delta_mm3.toExponential(2)} mm³</dd>
+            <dt>STEP volume / bbox delta</dt><dd>{assemblyValidation.roundtrip.volume_delta_mm3.toExponential(2)} / {assemblyValidation.roundtrip.bbox_max_abs_delta_mm.toExponential(2)} mm</dd>
+          </dl></>}
           {geometry && <><h2>Independent geometry</h2><dl><dt>Overall</dt><dd>{geometry.passed ? 'PASS' : 'FAIL'}</dd><dt>Chord / twist max</dt><dd>{geometry.max_chord_error_mm.toFixed(5)} mm / {geometry.max_twist_error_deg.toFixed(5)}°</dd><dt>Axis / TE max</dt><dd>{geometry.max_reference_axis_error_mm.toFixed(5)} / {geometry.max_te_error_mm.toFixed(5)} mm</dd><dt>Contour RMS / P95 / max</dt><dd>{geometry.control_contour_rms_max_mm.toFixed(5)} / {geometry.control_contour_p95_max_mm.toFixed(5)} / {geometry.control_contour_max_mm.toFixed(5)} mm</dd><dt>Root requested / sampled</dt><dd>{geometry.root_measurement.requested_r_over_R} / {geometry.root_measurement.measured_r_over_R}</dd><dt>Tip requested / sampled</dt><dd>{geometry.tip_measurement.requested_r_over_R} / {geometry.tip_measurement.measured_r_over_R}</dd></dl><details><summary>Per-station measurements ({geometry.stations.length})</summary><table><thead><tr><th>Requested</th><th>Sampled</th><th>Roles</th><th>Chord</th><th>Twist</th><th>TE</th></tr></thead><tbody>{geometry.stations.map(row => <tr key={row.requested_r_over_R}><td>{row.requested_r_over_R}</td><td>{row.sampled_r_over_R}</td><td>{row.station_roles.join(', ')}</td><td>{row.chord_absolute_error_mm.toFixed(4)}</td><td>{row.twist_absolute_error_deg.toFixed(4)}</td><td>{row.te_absolute_error_mm.toFixed(4)}</td></tr>)}</tbody></table></details></>}
           <h2>Artifacts</h2>
           {displayedResult && <p className="hint">Artifacts from completed job {displayedResult.job_id.slice(0, 8)}</p>}

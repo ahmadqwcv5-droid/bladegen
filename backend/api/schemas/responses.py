@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 class ProgressResponse(BaseModel):
     job_id: str
+    build_type: Literal["blade", "propeller"] = "blade"
     stage: str
     stage_label: str
     progress_percent: int = Field(ge=0, le=100)

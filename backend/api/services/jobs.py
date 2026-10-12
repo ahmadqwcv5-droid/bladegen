@@ -26,12 +26,19 @@ ALLOWED_ARTIFACTS = {
     "resolved_blade_spec.json",
     "blade_openvsp.vsp3",
     "blade_openvsp.step",
+    "blade_validation.json",
+    "blade_validation.csv",
+    "propeller_solid.step",
+    "propeller_preview.stl",
+    "propeller_spec.json",
+    "assembly_validation.csv",
 }
 
 
 @dataclass
 class Job:
     job_id: str
+    build_type: str = "blade"
     status: str = "queued"
     stage: str = QUEUED_PROGRESS.stage
     stage_label: str = QUEUED_PROGRESS.stage_label
@@ -61,13 +68,15 @@ class JobManager:
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bladegen-build")
         self.run_root.mkdir(parents=True, exist_ok=True)
 
-    def submit(self, spec: dict) -> Job:
+    def submit(self, spec: dict, build_type: str = "blade") -> Job:
+        if build_type not in {"blade", "propeller"}:
+            raise ValueError(f"Unsupported build type: {build_type}")
         job_id = uuid.uuid4().hex
         output_dir = self.run_root / job_id
         output_dir.mkdir(parents=False, exist_ok=False)
-        input_path = output_dir / "blade_spec_input.json"
+        input_path = output_dir / f"{build_type}_spec_input.json"
         input_path.write_text(json.dumps(spec, indent=2) + "\n", encoding="utf-8")
-        job = Job(job_id=job_id, output_dir=output_dir)
+        job = Job(job_id=job_id, build_type=build_type, output_dir=output_dir)
         with self._lock:
             self._jobs[job_id] = job
         self._executor.submit(self._run, job, input_path)
@@ -108,13 +117,15 @@ class JobManager:
         with self._lock:
             job.status = "running"
             job.stage = "validation"
-            job.stage_label = "Validating BladeSpec"
-            job.message = "The CAD worker is checking the input contract"
+            job.stage_label = (
+                "Validating PropellerSpec" if job.build_type == "propeller" else "Validating BladeSpec"
+            )
+            job.message = "The CAD worker is checking the neutral input contract"
         command = [
             sys.executable,
             "-m",
             "bladegen.cli",
-            "build",
+            "build-propeller" if job.build_type == "propeller" else "build",
             str(input_path),
             "--output",
             str(job.output_dir),
@@ -136,7 +147,18 @@ class JobManager:
             if process.returncode:
                 message = (process.stderr or process.stdout or "build failed").strip()
                 raise RuntimeError(message[-4000:])
-            required = ("blade_solid.step", "blade_preview.stl", "validation.json")
+            required = (
+                (
+                    "propeller_solid.step",
+                    "propeller_preview.stl",
+                    "propeller_spec.json",
+                    "blade_solid.step",
+                    "blade_spec.json",
+                    "validation.json",
+                )
+                if job.build_type == "propeller"
+                else ("blade_solid.step", "blade_preview.stl", "validation.json")
+            )
             missing = [name for name in required if not (job.output_dir / name).is_file()]
             if missing:
                 raise RuntimeError(f"Build did not produce required artifacts: {missing}")
@@ -159,7 +181,11 @@ class JobManager:
                 job.stage = "complete"
                 job.stage_label = "Build complete"
                 job.progress_percent = 100
-                job.message = "Validated STEP, preview, and validation artifacts are ready"
+                job.message = (
+                    "Validated propeller STEP, preview, and assembly artifacts are ready"
+                    if job.build_type == "propeller"
+                    else "Validated STEP, preview, and validation artifacts are ready"
+                )
                 job.completed_at = time.monotonic()
 
     def get(self, job_id: str) -> Job | None:

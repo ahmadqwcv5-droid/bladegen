@@ -10,18 +10,25 @@ function formatElapsed(seconds: number): string {
 function failureCategory(stage: string): string {
   if (stage === 'solidification') return 'STEP topology failure'
   if (stage === 'geometry_validation') return 'Independent geometry-validation failure'
+  if (stage === 'blade_resolution' || stage === 'blade_generation') return 'Reference blade generation failure'
+  if (stage === 'blade_copies') return 'Rotation/positioning failure'
+  if (stage === 'hub_intersection') return 'Hub intersection failure'
+  if (stage === 'fusion') return 'Boolean fusion failure'
+  if (stage === 'bore') return 'Bore-cut failure'
+  if (stage === 'assembly_validation' || stage === 'artifacts') return 'Final STEP validation failure'
   if (stage === 'validation' || stage === 'resolution') return 'Input validation failure'
   return 'Build execution failure'
 }
 
 export function BuildProgress({ job }: { job?: Job }) {
   if (!job) return null
+  const product = job.build_type === 'propeller' ? 'Propeller' : 'Blade'
   const displayedProgress = job.status === 'succeeded' ? 100 : Math.min(job.progress_percent, 95)
   return (
     <section className={`build-progress ${job.status}`} aria-live="polite">
       <div className="build-progress-heading">
         <div>
-          <p className="eyebrow">Generating Blade</p>
+          <p className="eyebrow">Generating {product}</p>
           <h2>{job.stage_label}</h2>
         </div>
         <strong>{displayedProgress}%</strong>
@@ -29,7 +36,7 @@ export function BuildProgress({ job }: { job?: Job }) {
       <div
         className="progress-track"
         role="progressbar"
-        aria-label="Blade generation progress"
+        aria-label={`${product} generation progress`}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={displayedProgress}

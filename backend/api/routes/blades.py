@@ -21,6 +21,10 @@ def _example_path(example_id: str) -> Path:
     path = EXAMPLES_ROOT / f"{example_id}.json"
     if not path.is_file():
         raise HTTPException(status_code=404, detail="Example not found")
+    try:
+        BladeSpec.from_json(path)
+    except (ValidationError, ValueError) as exc:
+        raise HTTPException(status_code=404, detail="Blade example not found") from exc
     return path
 
 
@@ -31,10 +35,14 @@ def health() -> dict:
 
 @router.get("/examples")
 def list_examples() -> list[dict]:
-    return [
-        {"id": path.stem, "name": BladeSpec.from_json(path).name}
-        for path in sorted(EXAMPLES_ROOT.glob("*.json"))
-    ]
+    examples = []
+    for path in sorted(EXAMPLES_ROOT.glob("*.json")):
+        try:
+            spec = BladeSpec.from_json(path)
+        except (ValidationError, ValueError):
+            continue
+        examples.append({"id": path.stem, "name": spec.name})
+    return examples
 
 
 @router.get("/examples/{example_id}")
@@ -65,6 +73,7 @@ def build(payload: dict) -> BuildAccepted:
     job = jobs.submit(payload)
     return BuildAccepted(
         job_id=job.job_id,
+        build_type=job.build_type,
         status="queued",
         stage="queued",
         stage_label="Queued",
@@ -81,6 +90,7 @@ def job_status(job_id: str) -> JobStatus:
         raise HTTPException(status_code=404, detail="Job not found")
     return JobStatus(
         job_id=job.job_id,
+        build_type=job.build_type,
         status=job.status,
         stage=job.stage,
         stage_label=job.stage_label,

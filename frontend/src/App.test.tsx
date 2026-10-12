@@ -22,6 +22,7 @@ const idA = 'a'.repeat(32)
 const idB = 'b'.repeat(32)
 const makeJob = (id: string, status: Job['status'], progress?: number, stage?: string): Job => ({
   job_id: id,
+  build_type: 'blade',
   status,
   stage: stage ?? (status === 'succeeded' ? 'complete' : status === 'queued' ? 'queued' : 'openvsp'),
   stage_label: status === 'succeeded' ? 'Build complete' : status === 'queued' ? 'Queued' : 'Generating blade surfaces',

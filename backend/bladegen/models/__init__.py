@@ -8,6 +8,7 @@ from .blade_spec import (
     Naca4Airfoil,
     RotationDirection,
 )
+from .propeller_spec import AssemblySpec, PropellerSpec
 from .resolved_blade_spec import ResolvedAirfoilSection, ResolvedBladeSpec, ResolvedCurve
 
 __all__ = [
@@ -20,4 +21,6 @@ __all__ = [
     "ResolvedAirfoilSection",
     "ResolvedBladeSpec",
     "ResolvedCurve",
+    "AssemblySpec",
+    "PropellerSpec",
 ]

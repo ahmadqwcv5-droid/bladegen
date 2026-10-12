@@ -59,6 +59,7 @@ function preview(spec: BladeSpec): DesignPreview {
 
 const job = (id: string, status: Job['status']): Job => ({
   job_id: id,
+  build_type: 'blade',
   status,
   stage: status === 'succeeded' ? 'complete' : status === 'failed' ? 'failed' : 'openvsp',
   stage_label: status === 'succeeded' ? 'Build complete' : status === 'failed' ? 'Build failed' : 'Generating blade surfaces',

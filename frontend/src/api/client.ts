@@ -5,6 +5,7 @@ import type {
   BladeSpec,
   DesignPreview,
   Job,
+  PropellerSpec,
 } from '../types/bladespec'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -20,6 +21,12 @@ export const validate = (spec: BladeSpec) => request<Record<string, unknown>>('/
   method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(spec),
 })
 export const build = (spec: BladeSpec) => request<Job>('/build', {
+  method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(spec),
+})
+export const validatePropeller = (spec: PropellerSpec) => request<Record<string, unknown>>('/propellers/validate', {
+  method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(spec),
+})
+export const buildPropeller = (spec: PropellerSpec) => request<Job>('/propellers/build', {
   method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(spec),
 })
 export const getJob = (id: string) => request<Job>(`/jobs/${id}`)
