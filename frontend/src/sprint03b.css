@@ -1,0 +1,37 @@
+.editor, .editor > section { min-width: 0; }
+.station-table-scroll { width: 100%; max-width: 100%; }
+.selected-station-summary { margin: .3rem 0 .65rem; font-weight: 800; color: #314951; }
+.station-row { transition: background-color .15s, box-shadow .15s; }
+.station-row:focus-within { outline: 2px solid #346f80; outline-offset: -2px; }
+.station-profile-actions button:focus-visible, .inspection-tabs button:focus-visible { outline: 3px solid #346f80; outline-offset: 2px; }
+.station-row.selected { background: #fff0e7; box-shadow: inset 4px 0 #f08a3c; }
+.station-row.compare-a { box-shadow: inset 4px 0 #f08a3c; }
+.station-row.compare-b { box-shadow: inset 4px 0 #29a3a3; }
+.station-state { min-width: 5.5rem; font-size: .72rem; font-weight: 800; }
+.station-state button { padding: 5px 7px; }
+.inspection-tabs { display: flex; gap: .4rem; margin: .5rem 0; }
+.inspection-tabs button[aria-pressed="true"] { border-color: #bb5b32; background: #f3ded4; }
+.preview-pending { padding: 12px; border-left: 4px solid #778b92; background: #edf2f3; }
+
+.airfoil-comparison { padding: 14px; border: 1px solid #d7e0e2; border-radius: 5px; background: #f9fbfb; }
+.comparison-controls { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto; gap: 12px; align-items: end; }
+.comparison-legend { display: flex; gap: 18px; margin: 10px 0 4px; font-weight: 800; }
+.legend-a { color: #b94e16; }
+.legend-b { color: #147477; }
+.comparison-plot { display: block; width: 100%; min-height: 180px; max-height: 320px; background: #fff; border: 1px solid #dbe3e5; }
+.comparison-a,.comparison-b { fill: none; stroke-width: 2px; vector-effect: non-scaling-stroke; }
+.comparison-a { stroke: #f08a3c; }
+.comparison-b { stroke: #16878b; stroke-dasharray: 7 3; }
+.comparison-table-scroll { overflow-x: auto; }
+.comparison-table-scroll table { width: 100%; }
+
+.station-guide-controls { padding: 8px 10px; border: 1px solid #52666e; background: #17252c; color: #edf6f7; }
+.station-guide-controls label { color: inherit; }
+.station-guide-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 6px 0 0; padding: 0; list-style: none; font-size: .78rem; }
+.station-guide-legend li::before { display: inline-block; width: .7rem; height: .7rem; margin-right: .35rem; border-radius: 50%; background: var(--guide-color); content: ''; }
+.station-guide-stale { margin: 6px 0 0; color: #ffd59b; font-weight: 700; }
+
+@media (max-width: 800px) {
+  .comparison-controls { grid-template-columns: 1fr; }
+  .comparison-plot { min-height: 145px; }
+}
