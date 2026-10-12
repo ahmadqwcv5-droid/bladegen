@@ -1,14 +1,17 @@
 # BladeGen Level 1 Alpha
 
 BladeGen turns a backend-neutral BladeSpec v0.2 JSON document into one validated
-blade solid. The real pipeline is BladeSpec → canonical resolution → headless
-OpenVSP → OCP sewing/solidification → STEP re-import qualification. The browser
-app edits the specification, submits a serialized build job, previews the OCP-
-derived STL, and downloads STEP and validation artifacts.
+blade solid, or nests that complete blade in PropellerSpec v0.1 to generate a
+validated full propeller. The blade pipeline is BladeSpec → canonical resolution
+→ headless OpenVSP → OCP sewing/solidification → STEP re-import qualification.
+The separate assembly pipeline copies that validated solid with exact OCP
+X-axis rotations, fuses an X-axis hub, cuts and measures a through-bore, and
+round-trips one authoritative assembly STEP. The browser previews only OCP-
+derived STL artifacts.
 
 ## Supported scope
 
-- One blade; searchable parametric NACA and persistent imported DAT/CSV coordinate profiles.
+- Single-blade and full-propeller design modes; searchable parametric NACA and persistent imported DAT/CSV coordinate profiles.
 - Canonical source/resolved 2D airfoil inspection, two-station comparison, and backend-sampled engineering charts.
 - Transactional vertical chart editing in engineering units with backend validation and bounded undo/redo.
 - Stable station selection with exact radial-location guides in the matching generated 3D blade.
@@ -16,10 +19,14 @@ derived STL, and downloads STEP and validation artifacts.
 - Independent chord, twist, rake, skew, and thickness station grids.
 - Physical finite trailing-edge thickness with measured tolerance reporting.
 - BladeSpec JSON new/open/export/reset and stale-build snapshot tracking.
-- One valid closed STEP solid, OCP preview STL, and machine-readable validation.
+- Dynamic 2–8 blade-count contract with measured production qualification for 2, 3, and 4 blades in Sprint 04A.
+- Simple cylindrical X-axis hub, positive-volume root connections, unintended-collision rejection, and coaxial through-bore.
+- One valid closed STEP solid, OCP preview STL, and separate blade/assembly machine-readable validation.
 
-Not yet included: multi-blade assemblies, manufacturing hubs, aero analysis,
-optimization, VSPAERO, authentication, or cloud execution.
+Not yet included: advanced manufacturing hubs, spinner/fillets/keyway/bolt
+features, independent per-blade pitch or geometry, aero analysis, optimization,
+VSPAERO, authentication, or cloud execution. Counts 5–8 remain valid contract
+inputs but are not production-qualified by Sprint 04A.
 
 ## Prerequisites and installation
 
@@ -55,6 +62,15 @@ pre-generation warning; the original coordinates are preserved and final STEP
 validation remains authoritative. See [Airfoil Library](docs/AIRFOIL_LIBRARY.md) and
 [Import Formats](docs/AIRFOIL_IMPORT_FORMATS.md).
 
+Choose **Single Blade** or **Full Propeller** without losing blade-editor state.
+Full Propeller exposes blade count, hub diameter/length, bore diameter, and
+initial azimuth. **Validate Assembly** checks the neutral contract without
+starting CAD; **Generate Propeller** performs measured intersection, collision,
+Boolean, bore, and final-STEP validation. Changing any submitted blade or
+assembly input marks the displayed result stale. Propeller mode shows front
+(along X), side, isometric, fit, and expanded-view controls; single-blade radial
+station guides are deliberately disabled for the rotated assembly.
+
 Build jobs are serialized and isolated in child
 processes. Outputs live under `output/runs/<job_id>/`.
 
@@ -86,6 +102,18 @@ source scripts/openvsp_env.sh
   examples/custom_multi_airfoil_finite_te.json --output output/manual
 ```
 
+Full-propeller CLI builds require neither FastAPI nor React:
+
+```bash
+source scripts/openvsp_env.sh
+.venv/bin/bladegen build-propeller \
+  examples/propeller_three_blade.json --output output/propeller_three
+```
+
+The HTTP equivalents are `POST /api/propellers/validate` and
+`POST /api/propellers/build`; job status and allow-listed downloads continue to
+use `/api/jobs/{job_id}` and `/api/jobs/{job_id}/artifacts`.
+
 Tests, production UI build, and browser acceptance:
 
 ```bash
@@ -107,6 +135,10 @@ The focused null/progress/camera corrections are documented in the
 [Patch 02.1.1 report](docs/PATCH_02_1_1_REPORT.md). Sprint 03A visual design
 and imported-profile CAD results are in the [Sprint 03A report](docs/SPRINT_03A_REPORT.md)
 and [acceptance matrix](docs/SPRINT_03A_ACCEPTANCE_MATRIX.md). Sprint 03B interactive station inspection, comparison, and stale-CAD synchronization are documented in the [Sprint 03B report](docs/SPRINT_03B_REPORT.md) and [acceptance matrix](docs/SPRINT_03B_ACCEPTANCE_MATRIX.md). Sprint 03C visual curve editing, transaction safety, and real-CAD evidence are documented in the [Sprint 03C report](docs/SPRINT_03C_REPORT.md) and [acceptance matrix](docs/SPRINT_03C_ACCEPTANCE_MATRIX.md). StrictMode-safe continuous editing and no-op history integrity are documented in the [Patch 03C.1 report](docs/PATCH_03C_1_REPORT.md).
+
+Sprint 04A full-propeller geometry, measured 2/3/4-blade acceptance, and known
+qualification limits are documented in the [Sprint 04A report](docs/SPRINT_04A_REPORT.md)
+and [acceptance matrix](docs/SPRINT_04A_ACCEPTANCE_MATRIX.md).
 
 ## Limitations and licensing
 

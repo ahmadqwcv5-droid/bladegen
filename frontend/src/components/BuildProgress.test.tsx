@@ -7,6 +7,7 @@ afterEach(() => cleanup())
 
 const job = (status: Job['status'], progress: number, stage = 'openvsp'): Job => ({
   job_id: 'a'.repeat(32),
+  build_type: 'blade',
   status,
   stage,
   stage_label: stage === 'complete' ? 'Build complete' : 'Generating blade surfaces',
@@ -45,5 +46,18 @@ describe('BuildProgress', () => {
     const geometry = { ...job('failed', 80, 'geometry_validation'), error: 'section mismatch' }
     rerender(<BuildProgress job={geometry} />)
     expect(screen.getByText(/Independent geometry-validation failure/)).toBeInTheDocument()
+  })
+
+  it.each([
+    ['blade_generation', 'Reference blade generation failure'],
+    ['blade_copies', 'Rotation/positioning failure'],
+    ['hub_intersection', 'Hub intersection failure'],
+    ['fusion', 'Boolean fusion failure'],
+    ['bore', 'Bore-cut failure'],
+    ['assembly_validation', 'Final STEP validation failure'],
+  ])('identifies propeller failure stage %s', (stage, category) => {
+    render(<BuildProgress job={{ ...job('failed', 60, stage), build_type: 'propeller' }} />)
+    expect(screen.getByText(new RegExp(category))).toBeInTheDocument()
+    expect(screen.getByText('Generating Propeller')).toBeInTheDocument()
   })
 })

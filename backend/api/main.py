@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes.airfoils import router as airfoil_router
 from api.routes.blades import router
+from api.routes.propellers import router as propeller_router
 
 app = FastAPI(title="BladeGen API", version="0.2.0")
 app.add_middleware(
@@ -13,3 +14,4 @@ app.add_middleware(
 )
 app.include_router(router, prefix="/api")
 app.include_router(airfoil_router, prefix="/api")
+app.include_router(propeller_router, prefix="/api")

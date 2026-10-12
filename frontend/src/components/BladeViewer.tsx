@@ -38,12 +38,14 @@ const defaultDirections = (): BladeViewDirections => ({
 
 export function BladeViewer({
   url,
+  modelType = 'blade',
   onError,
   guides = [],
   guidesEnabled = false,
   guideStatus,
 }: {
   url?: string
+  modelType?: 'blade' | 'propeller'
   onError?: (message: string) => void
   guides?: StationGuide[]
   guidesEnabled?: boolean
@@ -215,7 +217,9 @@ export function BladeViewer({
           return
         }
         geometry.computeVertexNormals()
-        directions = deriveBladeViewDirections(geometry)
+        directions = modelType === 'propeller'
+          ? { face: new THREE.Vector3(1, 0, 0), edge: new THREE.Vector3(0, 0, 1) }
+          : deriveBladeViewDirections(geometry)
         mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0xd8dde3, metalness: .12, roughness: .5 }))
         scene.add(mesh)
         modelBoxRef.current = new THREE.Box3().setFromObject(mesh)
@@ -263,7 +267,7 @@ export function BladeViewer({
       element.replaceChildren()
       actions.current = emptyActions()
     }
-  }, [syncGuides, url])
+  }, [modelType, syncGuides, url])
 
   const visibleGuides = guidesEnabled && showGuides ? guides : []
   return (
@@ -271,7 +275,7 @@ export function BladeViewer({
       className={`viewer-shell ${expanded ? 'expanded' : ''}`}
       role={expanded ? 'dialog' : undefined}
       aria-modal={expanded || undefined}
-      aria-label={expanded ? 'Expanded blade viewer' : undefined}
+      aria-label={expanded ? `Expanded ${modelType} viewer` : undefined}
       data-view={viewMode}
       data-guide-count={visibleGuides.length}
       data-guide-layer-updates={guideLayerUpdates}
@@ -282,7 +286,7 @@ export function BladeViewer({
       data-frustum-contained={cameraDiagnostics.contained === undefined ? 'unknown' : String(cameraDiagnostics.contained)}
     >
       <div className="viewer-host" ref={host}>
-        {!url && <p>Generate a blade to load its OCP-derived STL preview.</p>}
+        {!url && <p>Generate a {modelType} to load its OCP-derived STL preview.</p>}
         {state === 'loading' && <p className="viewer-overlay">Loading preview…</p>}
         {state === 'error' && <p className="viewer-overlay error">Preview failed to load</p>}
       </div>
@@ -294,8 +298,8 @@ export function BladeViewer({
       <div className="viewer-tools">
         <span>{state === 'ready' ? 'OCP solid preview' : state === 'loading' ? 'Loading preview…' : ''}</span>
         <div>
-          <button disabled={state !== 'ready'} aria-pressed={viewMode === 'face'} onClick={() => actions.current.face()}>Blade Face View</button>
-          <button disabled={state !== 'ready'} aria-pressed={viewMode === 'edge'} onClick={() => actions.current.edge()}>Blade Edge View</button>
+          <button disabled={state !== 'ready'} aria-pressed={viewMode === 'face'} onClick={() => actions.current.face()}>{modelType === 'propeller' ? 'Propeller Front View' : 'Blade Face View'}</button>
+          <button disabled={state !== 'ready'} aria-pressed={viewMode === 'edge'} onClick={() => actions.current.edge()}>{modelType === 'propeller' ? 'Propeller Side View' : 'Blade Edge View'}</button>
           <button disabled={state !== 'ready'} aria-pressed={viewMode === 'isometric'} onClick={() => actions.current.isometric()}>Isometric View</button>
           <button disabled={state !== 'ready'} onClick={() => actions.current.fit()}>Fit to Model</button>
           <button onClick={() => setExpanded(value => !value)}>{expanded ? 'Restore Viewer' : 'Expand Viewer'}</button>

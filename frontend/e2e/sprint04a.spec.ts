@@ -1,0 +1,83 @@
+import { expect, test, type Page } from '@playwright/test'
+import path from 'node:path'
+
+const evidenceRoot = path.resolve('../docs/screenshots/sprint04a')
+const evidence = (name: string) => path.join(evidenceRoot, name)
+
+async function setBladeCount(page: Page, count: number) {
+  const input = page.getByLabel('Number of Blades')
+  await input.fill(String(count))
+  await input.blur()
+  await expect(input).toHaveValue(String(count))
+}
+
+async function generate(page: Page, count: number) {
+  await setBladeCount(page, count)
+  await page.getByRole('button', { name: 'Generate Propeller' }).click()
+  await expect.poll(() => page.getByText(/Active job .* · (queued|running|succeeded) · propeller/).count(), { timeout: 30_000 }).toBe(1)
+  const progress = page.getByRole('progressbar', { name: 'Propeller generation progress' })
+  await expect(progress).toHaveAttribute('aria-valuenow', '100', { timeout: 360_000 })
+  await expect(page.getByText('Assembly validation')).toBeVisible()
+  await expect(page.getByText('Overall').locator('..')).toContainText('PASS')
+  await expect(page.getByText('Solid / free edges').locator('..')).toContainText('1 / 0')
+  await expect(page.getByRole('link', { name: 'propeller_solid.step', exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'blade_solid.step', exact: true })).toBeVisible()
+}
+
+test('real full-propeller workflow builds qualified 2/3/4 blade solids and preserves identity', async ({ page }) => {
+  test.setTimeout(1_200_000)
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  let propellerBuilds = 0
+  page.on('request', request => {
+    if (request.method() === 'POST' && request.url().endsWith('/api/propellers/build')) {
+      propellerBuilds += 1
+    }
+  })
+  await page.goto('/')
+  await expect(page.getByText('Airfoil Stations (5)')).toBeVisible({ timeout: 30_000 })
+  await page.getByRole('button', { name: 'Full Propeller' }).click()
+  await expect(page.getByRole('heading', { name: 'Propeller Assembly' })).toBeVisible()
+  await page.screenshot({ path: evidence('assembly_controls.png'), fullPage: true })
+
+  await setBladeCount(page, 2)
+  await page.getByRole('button', { name: 'Validate Assembly' }).click()
+  await expect(page.getByText(/PropellerSpec input validation passed/)).toBeVisible()
+  expect(propellerBuilds).toBe(0)
+  await generate(page, 2)
+  expect(propellerBuilds).toBe(1)
+  await page.getByRole('button', { name: 'Propeller Front View' }).click()
+  await page.screenshot({ path: evidence('two_blade_assembly.png'), fullPage: true })
+  await page.screenshot({ path: evidence('hub_bore_front_detail.png'), fullPage: true })
+
+  await setBladeCount(page, 3)
+  await expect(page.getByText(/Inputs changed — regenerate/)).toBeVisible()
+  expect(propellerBuilds).toBe(1)
+  await generate(page, 3)
+  expect(propellerBuilds).toBe(2)
+  await page.getByRole('button', { name: 'Propeller Side View' }).click()
+  await page.getByRole('button', { name: 'Isometric View' }).click()
+  await page.screenshot({ path: evidence('three_blade_assembly.png'), fullPage: true })
+
+  await setBladeCount(page, 4)
+  await expect(page.getByText(/Inputs changed — regenerate/)).toBeVisible()
+  await generate(page, 4)
+  expect(propellerBuilds).toBe(3)
+  await page.getByRole('button', { name: 'Propeller Front View' }).click()
+  await page.screenshot({ path: evidence('four_blade_assembly.png'), fullPage: true })
+  await page.getByRole('button', { name: 'Expand Viewer' }).click()
+  await expect(page.getByRole('dialog', { name: 'Expanded propeller viewer' })).toBeVisible()
+  await page.screenshot({ path: evidence('expanded_propeller_viewer.png'), fullPage: true })
+  await page.getByRole('button', { name: 'Restore Viewer' }).click()
+  await page.screenshot({ path: evidence('assembly_validation_results.png'), fullPage: true })
+
+  const specLink = page.getByRole('link', { name: 'propeller_spec.json', exact: true })
+  const submitted = await page.request.get(await specLink.getAttribute('href') ?? '')
+  expect(submitted.ok()).toBe(true)
+  const builtSpec = await submitted.json()
+  expect(builtSpec.assembly.blade_count).toBe(4)
+  expect(builtSpec.blade_spec.airfoil_sections).toHaveLength(5)
+  const stepLink = page.getByRole('link', { name: 'propeller_solid.step', exact: true })
+  const step = await page.request.get(await stepLink.getAttribute('href') ?? '')
+  expect(step.ok()).toBe(true)
+  expect((await step.body()).byteLength).toBeGreaterThan(100_000)
+})

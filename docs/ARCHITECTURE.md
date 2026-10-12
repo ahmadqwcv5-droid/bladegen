@@ -16,6 +16,31 @@ React editor ── BladeSpec v0.2 ── FastAPI design preview
                                    qualify → STEP + STL + JSON
 ```
 
+Full-propeller generation is a separate operation over the same validated
+blade service:
+
+```text
+PropellerSpec v0.1
+  ├── complete BladeSpec v0.2 ── existing blade pipeline (one invocation)
+  └── AssemblySpec                    │
+                                      v
+                         validated blade_solid.step
+                                      │ exact OCP copies/rotations
+                                      v
+                    X-axis hub union → X-axis bore cut
+                                      │
+                                      v
+                    propeller STEP round-trip qualification
+```
+
+`bladegen.assembly` owns placement, primitives, Boolean operations, collision
+checks, bore measurement, and topology qualification. It has no React or
+FastAPI dependency. `bladegen.propeller_pipeline.build_propeller()` is the
+reusable application boundary; the `build-propeller` CLI and FastAPI job layer
+both call it. Blade and propeller requests share the same one-worker queue, so
+OpenVSP is never driven by independent concurrent queues. Only the reference
+blade invokes OpenVSP; all additional blades use exact OCP transforms.
+
 `backend/bladegen/models` is the neutral contract. `curves` and `airfoils` own
 product mathematics; `adapters` is the only OpenVSP translation boundary;
 `solid` and `validation` make OCP authoritative for topology and measurements.
@@ -23,6 +48,13 @@ The API accepts no filesystem paths, generates UUID job directories, allows one
 active CAD subprocess, applies a configurable timeout (`BLADEGEN_BUILD_TIMEOUT`,
 default 300 s), and serves only allow-listed artifacts. No product module imports
 from `00_research_archive`.
+
+The transport boundary remains replaceable: a future desktop shell may retain
+React plus the local API or call the Python engine through another supported
+application layer. Sprint 04A does not select a desktop framework. OpenVSP
+runtime discovery remains configurable through `OPENVSP_ROOT`; the current
+installation/launch scripts are Linux-specific and other platforms still need
+separate packaging and qualification.
 
 The file-backed Airfoil Library lives outside BladeSpec. Parametric NACA entries
 call the canonical generator; imported DAT/CSV profiles are validated into the

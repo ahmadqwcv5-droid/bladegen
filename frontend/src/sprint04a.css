@@ -1,0 +1,9 @@
+.design-mode-tabs { display: flex; gap: 8px; margin: 0 0 18px; }
+.design-mode-tabs button[aria-pressed="true"] { border-color: #bb5b32; background: #f3ded4; color: #552311; font-weight: 800; }
+.assembly-card { border-left: 5px solid #346f80 !important; }
+.assembly-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0 0; }
+.assembly-summary span { padding: 8px; background: #eef4f5; border-radius: 3px; font-size: .78rem; }
+.build-kind { text-transform: capitalize; }
+@media (max-width: 720px) {
+  .assembly-summary { grid-template-columns: 1fr; }
+}
