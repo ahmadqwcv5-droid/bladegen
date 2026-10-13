@@ -6,12 +6,14 @@ import { AirfoilInspector } from './AirfoilInspector'
 export function AirfoilSelector({
   stationIndex,
   radius,
+  targetStations,
   onApply,
   onCancel,
 }: {
   stationIndex: number
   radius: number
-  onApply: (profile: AirfoilProfile) => void
+  targetStations?: { index: number; radius: number }[]
+  onApply: (profile: AirfoilProfile, options: { constantThickness: boolean }) => void
   onCancel: () => void
 }) {
   const [catalog, setCatalog] = useState<AirfoilCatalogItem[]>([])
@@ -27,7 +29,14 @@ export function AirfoilSelector({
   const [license, setLicense] = useState('')
   const [notes, setNotes] = useState('')
   const [normalize, setNormalize] = useState(false)
+  const [constantThickness, setConstantThickness] = useState(false)
   const selectionRevision = useRef(0)
+  const targets = targetStations?.length
+    ? targetStations
+    : [{ index: stationIndex, radius }]
+  const targetLabel = targets.length === 1
+    ? `station ${targets[0].index + 1}`
+    : `${targets.length} selected stations`
 
   const refresh = () => getAirfoilCatalog().then(items => {
     setCatalog(items)
@@ -75,10 +84,10 @@ export function AirfoilSelector({
   }
 
   return (
-    <div className="selector-backdrop" role="dialog" aria-modal="true" aria-label={`Airfoil Library for station ${stationIndex + 1}`}>
+    <div className="selector-backdrop" role="dialog" aria-modal="true" aria-label={`Airfoil Library for ${targetLabel}`}>
       <section className="airfoil-selector">
         <div className="section-title">
-          <div><p className="eyebrow">AIRFOIL LIBRARY</p><h2>Station {stationIndex + 1} · r/R {radius.toFixed(4)}</h2></div>
+          <div><p className="eyebrow">AIRFOIL LIBRARY</p><h2>{targets.length === 1 ? `Station ${targets[0].index + 1} · r/R ${targets[0].radius.toFixed(4)}` : `${targets.length} selected stations`}</h2></div>
           <button onClick={onCancel}>Cancel</button>
         </div>
         <div className="selector-layout">
@@ -107,8 +116,10 @@ export function AirfoilSelector({
             {profile && <>
               <AirfoilInspector profile={profile} />
               <dl><dt>Source</dt><dd>{profile.source}</dd><dt>License</dt><dd>{profile.license}</dd>{profile.canonical_coordinate_sha256 && <><dt>Coordinate SHA-256</dt><dd className="checksum">{profile.canonical_coordinate_sha256}</dd></>}</dl>
-              {profile.airfoil.type === 'coordinates' && <p className="resolution-note">Applying coordinates the active thickness control at r/R {radius.toFixed(4)} to the profile's natural geometric t/c {profile.metrics.max_thickness_ratio.toFixed(5)}. Other distribution controls are unchanged.</p>}
-              <button className="primary" onClick={() => onApply(profile)}>Apply to Station {stationIndex + 1}</button>
+              {profile.airfoil.type === 'coordinates' && <p className="resolution-note">Applying coordinates sets the active thickness control at {targets.map(target => `r/R ${target.radius.toFixed(4)}`).join(', ')} to the profile's natural geometric t/c {profile.metrics.max_thickness_ratio.toFixed(5)}. Other distribution controls are unchanged.</p>}
+              <p className="hint">Review target{targets.length === 1 ? '' : 's'}: {targets.map(target => `Station ${target.index + 1}`).join(', ')}. Profile and required thickness changes commit atomically.</p>
+              {targets.length > 1 && <label className="inline"><input aria-label="Use constant thickness for selected common profile" type="checkbox" checked={constantThickness} onChange={event => setConstantThickness(event.target.checked)} /> Replace Thickness with a reviewed root/tip constant for this common profile (requires all stations selected)</label>}
+              <button className="primary" onClick={() => onApply(profile, { constantThickness })}>Apply to {targets.length === 1 ? `Station ${targets[0].index + 1}` : `${targets.length} Selected Stations`}</button>
             </>}
           </div>
         </div>

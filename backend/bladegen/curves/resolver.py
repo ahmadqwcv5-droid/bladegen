@@ -14,7 +14,7 @@ from bladegen.airfoils.canonical import (
     trailing_edge_gap_normalized,
 )
 from bladegen.airfoils.geometry_metrics import measure_airfoil
-from bladegen.curves.canonical import curve_data, evaluate_curve
+from bladegen.curves.canonical import PreparedCurveEvaluator, prepare_curve
 from bladegen.models.blade_spec import AirfoilCoordinates, BladeSpec, Interpolation
 from bladegen.models.resolved_blade_spec import (
     ResolvedAirfoilSection,
@@ -46,16 +46,15 @@ class BladeSemanticError(ValueError):
         super().__init__(message)
 
 
-def _canonical_values(curve_spec, locations: np.ndarray, value_name: str) -> np.ndarray:
-    return np.asarray(
-        [evaluate_curve(curve_spec, float(location), value_name) for location in locations],
-        dtype=float,
-    )
+def _canonical_values(
+    evaluator: PreparedCurveEvaluator,
+    locations: np.ndarray,
+) -> np.ndarray:
+    return evaluator.evaluate_many(locations)
 
 
 def _adaptive_segment(
-    curve_spec,
-    value_name: str,
+    evaluator: PreparedCurveEvaluator,
     left: float,
     right: float,
     left_value: float,
@@ -65,17 +64,16 @@ def _adaptive_segment(
 ) -> list[tuple[float, float]]:
     fractions = np.asarray((0.25, 0.50, 0.75), dtype=float)
     locations = left + fractions * (right - left)
-    canonical = _canonical_values(curve_spec, locations, value_name)
+    canonical = _canonical_values(evaluator, locations)
     linear = left_value + fractions * (right_value - left_value)
     if float(np.max(np.abs(canonical - linear))) <= tolerance:
         return [(right, right_value)]
     if depth >= MAX_SUBDIVISION_DEPTH:
         raise RuntimeError("Canonical curve adaptive subdivision safety depth exceeded")
     midpoint = (left + right) / 2.0
-    midpoint_value = evaluate_curve(curve_spec, midpoint, value_name)
+    midpoint_value = evaluator.evaluate(midpoint)
     return _adaptive_segment(
-        curve_spec,
-        value_name,
+        evaluator,
         left,
         midpoint,
         left_value,
@@ -83,8 +81,7 @@ def _adaptive_segment(
         tolerance,
         depth + 1,
     ) + _adaptive_segment(
-        curve_spec,
-        value_name,
+        evaluator,
         midpoint,
         right,
         midpoint_value,
@@ -98,15 +95,16 @@ def resolve_curve(
     curve_spec,
     value_name: str,
     tolerance: CurveTolerance,
+    evaluator: PreparedCurveEvaluator | None = None,
 ) -> ResolvedCurve:
     """Resolve one canonical curve adaptively, then verify it at 5001 points."""
-    controls, values = curve_data(curve_spec, value_name)
+    prepared = evaluator or prepare_curve(curve_spec, value_name)
+    controls, values = prepared.parameters, prepared.values
     resolved: list[tuple[float, float]] = [(float(controls[0]), float(values[0]))]
     for index in range(len(controls) - 1):
         resolved.extend(
             _adaptive_segment(
-                curve_spec,
-                value_name,
+                prepared,
                 float(controls[index]),
                 float(controls[index + 1]),
                 float(values[index]),
@@ -118,7 +116,7 @@ def resolve_curve(
 
     # Supplement interval probes with a deterministic whole-domain audit.
     dense = np.linspace(float(controls[0]), float(controls[-1]), DENSE_VERIFICATION_LOCATIONS)
-    canonical = _canonical_values(curve_spec, dense, value_name)
+    canonical = _canonical_values(prepared, dense)
     while True:
         parameters = np.asarray([point[0] for point in resolved], dtype=float)
         resolved_values = np.asarray([point[1] for point in resolved], dtype=float)
@@ -129,7 +127,7 @@ def resolve_curve(
         worst = float(dense[int(np.argmax(errors))])
         if worst in set(parameters):
             raise RuntimeError("Dense resolver verification stalled above tolerance")
-        resolved.append((worst, evaluate_curve(curve_spec, worst, value_name)))
+        resolved.append((worst, prepared.evaluate(worst)))
         resolved.sort(key=lambda point: point[0])
         if len(resolved) > MAX_RESOLVED_POINTS:
             raise RuntimeError("Canonical curve resolved-point safety limit exceeded")
@@ -164,14 +162,21 @@ def tolerance_profile(spec: BladeSpec) -> dict[str, CurveTolerance]:
     }
 
 
-def resolve_airfoil_sections(spec: BladeSpec) -> tuple[ResolvedAirfoilSection, ...]:
+def resolve_airfoil_sections(
+    spec: BladeSpec,
+    chord_evaluator: PreparedCurveEvaluator | None = None,
+    thickness_evaluator: PreparedCurveEvaluator | None = None,
+) -> tuple[ResolvedAirfoilSection, ...]:
     """Resolve physical TE intent into exact normalized section coordinates."""
     radius_mm = spec.diameter_mm / 2.0
+    chord = chord_evaluator or prepare_curve(spec.chord_distribution, "chord_over_R")
+    thickness = thickness_evaluator or prepare_curve(
+        spec.thickness_distribution,
+        "thickness_ratio",
+    )
     result = []
     for index, section in enumerate(spec.airfoil_sections):
-        chord_mm = (
-            evaluate_curve(spec.chord_distribution, section.r_over_R, "chord_over_R") * radius_mm
-        )
+        chord_mm = chord.evaluate(section.r_over_R) * radius_mm
         if section.airfoil.type == "naca4":
             nominal_ratio = int(section.airfoil.code[2:]) / 100.0
             expected_ratio = (
@@ -179,9 +184,7 @@ def resolve_airfoil_sections(spec: BladeSpec) -> tuple[ResolvedAirfoilSection, .
                 if section.thickness_override_ratio is not None
                 else nominal_ratio
             )
-            actual_ratio = evaluate_curve(
-                spec.thickness_distribution, section.r_over_R, "thickness_ratio"
-            )
+            actual_ratio = thickness.evaluate(section.r_over_R)
             if not math.isclose(actual_ratio, expected_ratio, abs_tol=1e-6):
                 choice = (
                     "explicit thickness_override_ratio"
@@ -229,9 +232,7 @@ def resolve_airfoil_sections(spec: BladeSpec) -> tuple[ResolvedAirfoilSection, .
             upper = list(section.airfoil.upper)
             lower = list(section.airfoil.lower)
             natural_ratio = measure_airfoil(upper, lower).max_thickness_ratio
-            actual_ratio = evaluate_curve(
-                spec.thickness_distribution, section.r_over_R, "thickness_ratio"
-            )
+            actual_ratio = thickness.evaluate(section.r_over_R)
             if not math.isclose(actual_ratio, natural_ratio, abs_tol=1e-4):
                 raise BladeSemanticError(
                     f"Thickness distribution at r/R={section.r_over_R:g} is "
@@ -274,21 +275,61 @@ def resolve_airfoil_sections(spec: BladeSpec) -> tuple[ResolvedAirfoilSection, .
     return tuple(result)
 
 
-def resolve_blade_spec(spec: BladeSpec) -> ResolvedBladeSpec:
+def prepare_blade_curves(spec: BladeSpec) -> dict[str, PreparedCurveEvaluator]:
+    """Prepare every canonical distribution once for one immutable snapshot."""
+    return {
+        "chord": prepare_curve(spec.chord_distribution, "chord_over_R"),
+        "twist": prepare_curve(spec.twist_distribution, "twist_deg"),
+        "rake": prepare_curve(spec.rake_distribution, "rake_over_R"),
+        "skew": prepare_curve(spec.skew_distribution, "skew_over_R"),
+        "thickness": prepare_curve(spec.thickness_distribution, "thickness_ratio"),
+    }
+
+
+def resolve_blade_spec(
+    spec: BladeSpec,
+    evaluators: dict[str, PreparedCurveEvaluator] | None = None,
+) -> ResolvedBladeSpec:
     """Create the backend-neutral representation consumed by geometry adapters."""
     tolerances = tolerance_profile(spec)
+    prepared = evaluators or prepare_blade_curves(spec)
     return ResolvedBladeSpec(
         resolver_version=RESOLVER_VERSION,
         tolerance_profile=TOLERANCE_PROFILE,
         source_bladespec=spec,
-        airfoil_sections=resolve_airfoil_sections(spec),
-        chord_curve=resolve_curve(spec.chord_distribution, "chord_over_R", tolerances["chord"]),
-        twist_curve=resolve_curve(spec.twist_distribution, "twist_deg", tolerances["twist"]),
-        rake_curve=resolve_curve(spec.rake_distribution, "rake_over_R", tolerances["rake"]),
-        skew_curve=resolve_curve(spec.skew_distribution, "skew_over_R", tolerances["skew"]),
+        airfoil_sections=resolve_airfoil_sections(
+            spec,
+            prepared["chord"],
+            prepared["thickness"],
+        ),
+        chord_curve=resolve_curve(
+            spec.chord_distribution,
+            "chord_over_R",
+            tolerances["chord"],
+            prepared["chord"],
+        ),
+        twist_curve=resolve_curve(
+            spec.twist_distribution,
+            "twist_deg",
+            tolerances["twist"],
+            prepared["twist"],
+        ),
+        rake_curve=resolve_curve(
+            spec.rake_distribution,
+            "rake_over_R",
+            tolerances["rake"],
+            prepared["rake"],
+        ),
+        skew_curve=resolve_curve(
+            spec.skew_distribution,
+            "skew_over_R",
+            tolerances["skew"],
+            prepared["skew"],
+        ),
         thickness_curve=resolve_curve(
             spec.thickness_distribution,
             "thickness_ratio",
             tolerances["thickness"],
+            prepared["thickness"],
         ),
     )
