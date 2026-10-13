@@ -33,10 +33,11 @@
 | Full backend non-integration suite | 147 passed, 11 deselected, 0 failed | PASS |
 | Full CAD integration suite | 11 passed, 147 deselected, 0 failed | PASS |
 | Frontend unit/build/lint | 122 tests, production build, and Ruff pass | PASS |
-| Cross-sprint browser suite | Latest full run 10/11 before final camera test fix; fixed camera then passes focused | LIMITATION |
+| Cross-sprint browser suite | Exact commit `21a0246157bae2f81cc485428656574a59f6c951`; one `npm run test:e2e` invocation; 11 collected, 11 passed, 0 failed/skipped/retried in 27.1 min | PASS |
 | Historical archive unchanged | No path below `00_research_archive` modified | PASS |
 
-Overall classification: **PASS WITH LIMITATIONS**. All required product behavior
-has direct evidence. The limitation is the absence of one final consolidated
-11/11 Playwright invocation after a test-only initialization synchronization
-fix; it is not a known product or CAD failure.
+Overall classification: **STRONG PASS**. All required product behavior has direct
+evidence, and the previous consolidated-browser verification limitation is now
+closed by a single final unchanged-commit 11/11 run with no retries. At closure,
+the follow-up changes are limited to this matrix and the Patch 04A.2 report; no
+tested product, geometry, UI, or test code changed.
