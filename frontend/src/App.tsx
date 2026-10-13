@@ -902,7 +902,7 @@ export default function App() {
 
         <aside>
           <h2>{displayedResult?.build_type === 'propeller' ? 'Full propeller preview' : 'Solid preview'}</h2>
-          {displayedResult && <p className={stale ? 'preview-label stale' : 'preview-label'}><strong>Last successful build{stale ? ' — previous inputs' : ' — current inputs'}</strong> · Preview from completed job {displayedResult.job_id.slice(0, 8)} · <span className="build-kind">{displayedResult.build_type}</span>{stale ? ' · previous inputs or mode' : ''}</p>}
+          {displayedResult && <p className={stale ? 'preview-label stale' : 'preview-label'} data-result-job-id={displayedResult.job_id}><strong>Last successful build{stale ? ' — previous inputs' : ' — current inputs'}</strong> · Preview from completed job {displayedResult.job_id.slice(0, 8)} · <span className="build-kind">{displayedResult.build_type}</span>{stale ? ' · previous inputs or mode' : ''}</p>}
           <BladeViewer modelType={displayedResult?.build_type ?? designMode} url={preview?.download_url} onError={setCadPreviewError} guides={stationGuides} guidesEnabled={guidesEnabled} guideStatus={guideStatus} />
           {solid && <><h2>STEP topology</h2><dl><dt>Solid / free edges</dt><dd>{solid.solids} / {solid.free_edges}</dd><dt>Closed / BRep valid</dt><dd>{String(solid.closed_shell)} / {String(solid.brepcheck_valid)}</dd><dt>Adaptive volume</dt><dd>{solid.volume_mm3.toFixed(6)} mm³</dd></dl></>}
           {assemblyValidation && <><h2>Assembly validation</h2><dl>

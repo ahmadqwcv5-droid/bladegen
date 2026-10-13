@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+from copy import deepcopy
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -95,6 +96,43 @@ def test_nominal_hub_gap_is_rejected_before_job_submission(monkeypatch):
     assert response.status_code == 422
     assert response.json()["issues"][0]["code"] == "hub_root_nominal_overlap_required"
     assert submitted == []
+
+
+def test_semantically_invalid_blade_is_rejected_by_validate_and_direct_build(monkeypatch):
+    candidate = deepcopy(EXAMPLE)
+    candidate["blade_spec"]["airfoil_sections"][1].pop("thickness_override_ratio", None)
+    candidate["blade_spec"]["thickness_distribution"]["points"][1][
+        "thickness_ratio"
+    ] = 0.20
+    submitted = []
+    monkeypatch.setattr(propellers.jobs, "submit", lambda *args, **kwargs: submitted.append(args))
+    validate_response = client.post("/api/propellers/validate", json=candidate)
+    build_response = client.post("/api/propellers/build", json=candidate)
+    assert validate_response.status_code == 422
+    assert build_response.status_code == 422
+    assert build_response.json()["issues"][0]["code"] == "invalid_blade_spec"
+    assert build_response.json()["issues"][0]["field"] == "blade_spec.thickness_distribution"
+    assert submitted == []
+
+
+def test_api_normalizes_omitted_azimuth_for_job_submission(monkeypatch):
+    candidate = deepcopy(EXAMPLE)
+    candidate["assembly"].pop("initial_azimuth_deg")
+    submitted = []
+
+    class AcceptedJob:
+        job_id = "a" * 32
+        build_type = "propeller"
+        elapsed_seconds = 0.0
+
+    def record(spec, build_type):
+        submitted.append((spec, build_type))
+        return AcceptedJob()
+
+    monkeypatch.setattr(propellers.jobs, "submit", record)
+    response = client.post("/api/propellers/build", json=candidate)
+    assert response.status_code == 202
+    assert submitted[0][0]["assembly"]["initial_azimuth_deg"] == 0.0
 
 
 def test_propeller_job_uses_shared_queue_and_allowlisted_artifacts(monkeypatch):

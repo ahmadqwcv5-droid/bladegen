@@ -37,6 +37,15 @@ class CurveTolerance:
     scale_to_engineering: float
 
 
+class BladeSemanticError(ValueError):
+    """Structured failure from canonical, non-CAD blade resolution."""
+
+    def __init__(self, message: str, *, field: str, context: dict[str, object]):
+        self.field = field
+        self.context = context
+        super().__init__(message)
+
+
 def _canonical_values(curve_spec, locations: np.ndarray, value_name: str) -> np.ndarray:
     return np.asarray(
         [evaluate_curve(curve_spec, float(location), value_name) for location in locations],
@@ -159,7 +168,7 @@ def resolve_airfoil_sections(spec: BladeSpec) -> tuple[ResolvedAirfoilSection, .
     """Resolve physical TE intent into exact normalized section coordinates."""
     radius_mm = spec.diameter_mm / 2.0
     result = []
-    for section in spec.airfoil_sections:
+    for index, section in enumerate(spec.airfoil_sections):
         chord_mm = (
             evaluate_curve(spec.chord_distribution, section.r_over_R, "chord_over_R") * radius_mm
         )
@@ -179,17 +188,43 @@ def resolve_airfoil_sections(spec: BladeSpec) -> tuple[ResolvedAirfoilSection, .
                     if section.thickness_override_ratio is not None
                     else f"nominal NACA {section.airfoil.code} thickness {nominal_ratio:.4f}"
                 )
-                raise ValueError(
+                raise BladeSemanticError(
                     f"Thickness distribution at r/R={section.r_over_R:g} is "
                     f"{actual_ratio:.6f}, inconsistent with {choice}; update the curve "
-                    "or declare thickness_override_ratio."
+                    "or declare thickness_override_ratio.",
+                    field="thickness_distribution",
+                    context={
+                        "station_index": index,
+                        "station_r_over_R": section.r_over_R,
+                        "selected_airfoil": f"NACA {section.airfoil.code}",
+                        "evaluated_thickness_ratio": actual_ratio,
+                        "expected_thickness_ratio": expected_ratio,
+                        "expectation_source": (
+                            "explicit_override"
+                            if section.thickness_override_ratio is not None
+                            else "nominal_naca"
+                        ),
+                    },
                 )
             # Resolve the effective section geometry before handing it to a CAD
             # backend. This prevents OpenVSP from scaling finite TE gaps when a
             # NACA thickness override differs from the nominal code.
-            upper, lower = naca_4digit_coordinates(
-                section.airfoil.code, thickness_ratio=actual_ratio
-            )
+            try:
+                upper, lower = naca_4digit_coordinates(
+                    section.airfoil.code, thickness_ratio=actual_ratio
+                )
+            except ValueError as exc:
+                raise BladeSemanticError(
+                    f"NACA {section.airfoil.code} at r/R={section.r_over_R:g} is not a "
+                    f"supported mathematical airfoil definition: {exc}",
+                    field=f"airfoil_sections.{index}.airfoil.code",
+                    context={
+                        "station_index": index,
+                        "station_r_over_R": section.r_over_R,
+                        "selected_airfoil": f"NACA {section.airfoil.code}",
+                        "evaluated_thickness_ratio": actual_ratio,
+                    },
+                ) from exc
         else:
             upper = list(section.airfoil.upper)
             lower = list(section.airfoil.lower)
@@ -198,11 +233,19 @@ def resolve_airfoil_sections(spec: BladeSpec) -> tuple[ResolvedAirfoilSection, .
                 spec.thickness_distribution, section.r_over_R, "thickness_ratio"
             )
             if not math.isclose(actual_ratio, natural_ratio, abs_tol=1e-4):
-                raise ValueError(
+                raise BladeSemanticError(
                     f"Thickness distribution at r/R={section.r_over_R:g} is "
                     f"{actual_ratio:.6f}, inconsistent with imported coordinate "
                     f"profile geometric thickness {natural_ratio:.6f}; coordinate the "
-                    "active thickness control before CAD generation."
+                    "active thickness control before CAD generation.",
+                    field="thickness_distribution",
+                    context={
+                        "station_index": index,
+                        "station_r_over_R": section.r_over_R,
+                        "selected_airfoil": "coordinate profile",
+                        "evaluated_thickness_ratio": actual_ratio,
+                        "natural_thickness_ratio": natural_ratio,
+                    },
                 )
         if section.trailing_edge_thickness_mm is None:
             resolved_upper, resolved_lower = upper, lower

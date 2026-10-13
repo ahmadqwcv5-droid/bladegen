@@ -71,3 +71,27 @@ def test_pipeline_rejects_preflight_before_reference_blade(
         build_propeller(source, output)
     assert blade_calls == []
     assert not output.exists()
+
+
+def test_pipeline_rejects_semantic_blade_error_before_reference_blade(monkeypatch, tmp_path):
+    from bladegen import propeller_pipeline
+
+    source = tmp_path / "propeller.json"
+    payload = json.loads(
+        (
+            propeller_pipeline.Path(__file__).resolve().parents[2]
+            / "examples/propeller_two_blade.json"
+        ).read_text(encoding="utf-8")
+    )
+    payload["blade_spec"]["airfoil_sections"][1].pop("thickness_override_ratio", None)
+    payload["blade_spec"]["thickness_distribution"]["points"][1][
+        "thickness_ratio"
+    ] = 0.20
+    source.write_text(json.dumps(payload), encoding="utf-8")
+    blade_calls = []
+    monkeypatch.setattr(propeller_pipeline, "build_blade", lambda *args: blade_calls.append(args))
+    output = tmp_path / "output"
+    with pytest.raises(PropellerPreflightError, match="Thickness distribution"):
+        build_propeller(source, output)
+    assert blade_calls == []
+    assert not output.exists()

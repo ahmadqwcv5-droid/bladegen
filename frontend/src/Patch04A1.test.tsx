@@ -233,4 +233,86 @@ describe('Patch 04A.1 assembly validation and project state', () => {
     expect(screen.queryByText(/Input validation passed; final geometric qualification/)).not.toBeInTheDocument()
     expect(api.buildPropeller).not.toHaveBeenCalled()
   })
+
+  it('does not let an old PASS satisfy an identical newer job', async () => {
+    const idA = 'a'.repeat(32)
+    const idB = 'b'.repeat(32)
+    let statusB: Job['status'] = 'running'
+    api.buildPropeller
+      .mockResolvedValueOnce(job(idA, 'queued'))
+      .mockResolvedValueOnce(job(idB, 'queued'))
+    api.getJob.mockImplementation(async (id: string) => (
+      job(id, id === idB ? statusB : 'succeeded')
+    ))
+    await loadPropeller()
+    await userEvent.click(screen.getByRole('button', { name: 'Generate Propeller' }))
+    await waitFor(() => expect(document.querySelector('[data-result-job-id]')).toHaveAttribute('data-result-job-id', idA))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Generate Propeller' }))
+    await screen.findByText(/Active job bbbbbbbb · queued/)
+    await waitFor(() => expect(api.getJob).toHaveBeenCalledWith(idB))
+    expect(document.querySelector('[data-result-job-id]')).toHaveAttribute('data-result-job-id', idA)
+    expect(document.querySelector('[data-result-job-id]')).not.toHaveAttribute('data-result-job-id', idB)
+
+    statusB = 'succeeded'
+    await waitFor(
+      () => expect(document.querySelector('[data-result-job-id]')).toHaveAttribute('data-result-job-id', idB),
+      { timeout: 2_000 },
+    )
+    expect(screen.getByRole('link', { name: 'propeller_solid.step' })).toHaveAttribute('href', '/step-b')
+  })
+
+  it('retains the older successful result when the new identical job fails', async () => {
+    const idA = 'a'.repeat(32)
+    const idB = 'b'.repeat(32)
+    api.buildPropeller
+      .mockResolvedValueOnce(job(idA, 'queued'))
+      .mockResolvedValueOnce(job(idB, 'queued'))
+    api.getJob.mockImplementation(async (id: string) => (
+      job(id, id === idB ? 'failed' : 'succeeded')
+    ))
+    await loadPropeller()
+    await userEvent.click(screen.getByRole('button', { name: 'Generate Propeller' }))
+    await waitFor(() => expect(document.querySelector('[data-result-job-id]')).toHaveAttribute('data-result-job-id', idA))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Generate Propeller' }))
+    await screen.findByText(/Active job bbbbbbbb · queued/)
+    await waitFor(() => expect(screen.getByText(/Active job bbbbbbbb · failed/)).toBeVisible(), { timeout: 2_000 })
+    expect(document.querySelector('[data-result-job-id]')).toHaveAttribute('data-result-job-id', idA)
+    expect(api.getArtifacts).not.toHaveBeenCalledWith(idB)
+  })
+
+  it('ignores delayed artifacts from an obsolete job after a newer job is active', async () => {
+    const idA = 'a'.repeat(32)
+    const idB = 'b'.repeat(32)
+    let resolveArtifactsA!: (value: object[]) => void
+    const delayedArtifactsA = new Promise<object[]>(resolve => { resolveArtifactsA = resolve })
+    api.buildPropeller
+      .mockResolvedValueOnce(job(idA, 'queued'))
+      .mockResolvedValueOnce(job(idB, 'queued'))
+    api.getJob.mockImplementation(async (id: string) => job(id, 'succeeded'))
+    api.getArtifacts.mockImplementation(async (id: string) => {
+      if (id === idA) return delayedArtifactsA
+      return [
+        { name: 'propeller_preview.stl', size_bytes: 1, download_url: '/preview-b' },
+        { name: 'propeller_solid.step', size_bytes: 1, download_url: '/step-b' },
+      ]
+    })
+    await loadPropeller()
+    await userEvent.click(screen.getByRole('button', { name: 'Generate Propeller' }))
+    await waitFor(() => expect(api.getArtifacts).toHaveBeenCalledWith(idA), { timeout: 2_000 })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Generate Propeller' }))
+    await screen.findByText(/Active job bbbbbbbb · queued/)
+    resolveArtifactsA([
+      { name: 'propeller_preview.stl', size_bytes: 1, download_url: '/preview-a' },
+      { name: 'propeller_solid.step', size_bytes: 1, download_url: '/step-a' },
+    ])
+    await waitFor(
+      () => expect(document.querySelector('[data-result-job-id]')).toHaveAttribute('data-result-job-id', idB),
+      { timeout: 2_000 },
+    )
+    expect(screen.getByRole('link', { name: 'propeller_solid.step' })).toHaveAttribute('href', '/step-b')
+    expect(screen.queryByText(/Preview from completed job aaaaaaaa/)).not.toBeInTheDocument()
+  })
 })

@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import path from 'node:path'
+import { submitBuild, waitForExactResult } from './jobIdentity'
 
 const evidenceRoot = path.resolve('../docs/screenshots/patch03c1')
 const evidence = (name: string) => path.join(evidenceRoot, name)
@@ -101,11 +102,11 @@ test('visual curve editing is transactional and final CAD matches the committed 
   await page.setViewportSize({ width: 520, height: 900 })
   await expect(page.locator('.distribution-visual')).toBeVisible()
   await page.setViewportSize({ width: 1280, height: 900 })
-  await page.getByRole('button', { name: 'Generate Blade' }).click()
+  const jobId = await submitBuild(page, 'Generate Blade', '/api/build')
   const progress = page.getByRole('progressbar', { name: 'Blade generation progress' })
   await expect(page.getByText(/Active job .* · (queued|running|succeeded)/)).toBeVisible({ timeout: 30_000 })
   expect(builds).toBe(1)
-  await expect(progress).toHaveAttribute('aria-valuenow', '100', { timeout: 360_000 })
+  await waitForExactResult(page, jobId)
   await expect(page.getByText('Overall').locator('..')).toContainText('PASS')
   await expect(page.getByText('Solid / free edges').locator('..')).toContainText('1 / 0')
   const specArtifact = page.getByRole('link', { name: 'blade_spec.json', exact: true })

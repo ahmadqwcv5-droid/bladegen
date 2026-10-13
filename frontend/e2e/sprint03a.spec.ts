@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import path from 'node:path'
+import { submitBuild, waitForExactResult } from './jobIdentity'
 
 const evidence = (name: string) => path.resolve('../docs/screenshots/sprint03a', name)
 const fixture = path.resolve('../backend/tests/fixtures/airfoils/independent_analytic_finite_te.dat')
@@ -63,9 +64,8 @@ test('imported airfoil visual-design workflow produces a validated real STEP', a
   await expect(page.getByText(/Opened and validated/)).toBeVisible({ timeout: 30_000 })
   await expect(page.getByText('Coordinate profile')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Generate Blade' }).click()
-  const progress = page.getByRole('progressbar', { name: 'Blade generation progress' })
-  await expect(progress).toHaveAttribute('aria-valuenow', '100', { timeout: 360_000 })
+  const jobId = await submitBuild(page, 'Generate Blade', '/api/build')
+  await waitForExactResult(page, jobId)
   await expect(page.getByText('Overall').locator('..')).toContainText('PASS')
   await expect(page.getByText('Solid / free edges').locator('..')).toContainText('1 / 0')
   await expect(page.getByRole('link', { name: 'blade_solid.step' })).toBeVisible()

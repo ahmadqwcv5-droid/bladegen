@@ -31,11 +31,23 @@ function rejectUnknownKeys(value: Record<string, unknown>, allowed: string[], la
 
 function parseAssembly(value: unknown): AssemblySpec {
   if (!isRecord(value)) throw new Error('PropellerSpec requires a complete assembly object')
+  rejectUnknownKeys(value, [
+    'blade_count', 'hub_diameter_mm', 'hub_length_mm',
+    'shaft_bore_diameter_mm', 'initial_azimuth_deg',
+  ], 'assembly')
   if (!Number.isInteger(value.blade_count)) throw new Error('assembly.blade_count must be an integer')
-  for (const field of ['hub_diameter_mm', 'hub_length_mm', 'shaft_bore_diameter_mm', 'initial_azimuth_deg']) {
+  for (const field of ['hub_diameter_mm', 'hub_length_mm', 'shaft_bore_diameter_mm']) {
     if (!finite(value[field])) throw new Error(`assembly.${field} must be a finite number`)
   }
-  return value as unknown as AssemblySpec
+  const initialAzimuth = 'initial_azimuth_deg' in value ? value.initial_azimuth_deg : 0
+  if (!finite(initialAzimuth)) throw new Error('assembly.initial_azimuth_deg must be a finite number')
+  return {
+    blade_count: value.blade_count as number,
+    hub_diameter_mm: value.hub_diameter_mm as number,
+    hub_length_mm: value.hub_length_mm as number,
+    shaft_bore_diameter_mm: value.shaft_bore_diameter_mm as number,
+    initial_azimuth_deg: initialAzimuth,
+  }
 }
 
 export function bladeProject(bladeSpec: BladeSpec): ProjectDocument {

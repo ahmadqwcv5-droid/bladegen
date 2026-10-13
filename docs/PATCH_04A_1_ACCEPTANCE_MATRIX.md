@@ -1,5 +1,11 @@
 # Patch 04A.1 Acceptance Matrix
 
+> **Patch 04A.2 correction:** The original “fresh-session” and generic PASS/link
+> checks did not prove browser-context isolation or bind acceptance to the newly
+> submitted job. The historical 04A.1 results remain recorded below; the
+> strengthened evidence and corrected acceptance status are in
+> [the Patch 04A.2 matrix](PATCH_04A_2_ACCEPTANCE_MATRIX.md).
+
 | Requirement | Evidence | Result |
 | --- | --- | --- |
 | Preserve strict nominal hub policy | Shared guidance/preflight; D=80 rejects and D=81 passes nominal screening | PASS |

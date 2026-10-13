@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import path from 'node:path'
+import { submitBuild, waitForExactResult } from './jobIdentity'
 
 const evidenceRoot = path.resolve('../docs/screenshots/patch03b1')
 const evidence = (name: string) => path.join(evidenceRoot, name)
@@ -18,9 +19,8 @@ test('real CAD station inspection and canonical comparison remain revision-safe'
 
   await page.getByRole('button', { name: 'Inspect' }).nth(2).click()
   await expect(page.getByText(/Inspecting Station 3 · r\/R 0.6000/)).toBeVisible()
-  await page.getByRole('button', { name: 'Generate Blade' }).click()
-  const progress = page.getByRole('progressbar', { name: 'Blade generation progress' })
-  await expect(progress).toHaveAttribute('aria-valuenow', '100', { timeout: 360_000 })
+  const jobId = await submitBuild(page, 'Generate Blade', '/api/build')
+  await waitForExactResult(page, jobId)
   await expect(page.getByText('OCP solid preview')).toBeVisible({ timeout: 30_000 })
 
   const shell = page.locator('.viewer-shell')
@@ -141,11 +141,10 @@ test('real CAD station inspection and canonical comparison remain revision-safe'
   await expect(comparison).toBeVisible({ timeout: 30_000 })
   await page.screenshot({ path: evidence('stale_cad_guides_hidden.png'), fullPage: true })
 
-  await page.getByRole('button', { name: 'Generate Blade' }).click()
+  const replacementJobId = await submitBuild(page, 'Generate Blade', '/api/build')
   await expect(page.getByText(/Active job .* · (queued|running)/)).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByText(/Active job .* · succeeded/)).toBeVisible({ timeout: 360_000 })
+  await waitForExactResult(page, replacementJobId)
   await expect(page.locator('.preview-label')).not.toContainText(oldJobId!, { timeout: 30_000 })
-  await expect(progress).toHaveAttribute('aria-valuenow', '100')
   await expect(shell).toHaveAttribute('data-guide-count', '2')
   await expect(guideItems.nth(0)).toHaveAttribute('data-world-y-mm', '40.000000')
   await expect(guideItems.nth(1)).toHaveAttribute('data-world-y-mm', '160.000000')
