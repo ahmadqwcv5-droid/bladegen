@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import path from 'node:path'
+import { submitBuild, waitForExactResult } from './jobIdentity'
 
 const evidence = (name: string) => path.resolve('../docs/screenshots', name)
 
@@ -7,7 +8,7 @@ test('real backend build reports progress and supports expanded CAD inspection',
   await page.goto('/')
   await expect(page.getByText('Airfoil Stations (5)')).toBeVisible()
   await page.getByLabel('Name').fill('browser_acceptance_blade')
-  await page.getByRole('button', { name: 'Generate Blade' }).click()
+  const jobId = await submitBuild(page, 'Generate Blade', '/api/build')
 
   const progress = page.getByRole('progressbar', { name: 'Blade generation progress' })
   await expect(progress).toBeVisible()
@@ -17,7 +18,7 @@ test('real backend build reports progress and supports expanded CAD inspection',
   }).toBeGreaterThan(0)
   await page.screenshot({ path: evidence('sprint02_1_progress.png'), fullPage: true })
 
-  await expect(progress).toHaveAttribute('aria-valuenow', '100', { timeout: 240_000 })
+  await waitForExactResult(page, jobId, 240_000)
   await expect(page.getByText(/Preview from completed job/)).toBeVisible()
   await expect(page.getByText('OCP solid preview')).toBeVisible({ timeout: 30_000 })
   await page.screenshot({ path: evidence('sprint02_1_success.png'), fullPage: true })

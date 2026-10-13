@@ -14,6 +14,7 @@ from bladegen.assembly.capabilities import (
     SUPPORTED_BLADE_COUNTS,
     nominal_hub_guidance,
 )
+from bladegen.curves.resolver import BladeSemanticError, resolve_airfoil_sections
 from bladegen.models import PropellerSpec
 
 
@@ -106,7 +107,12 @@ def _raw_issues(payload: Any, require_runtime_support: bool) -> list[ValidationI
         "shaft_bore_diameter_mm",
         "initial_azimuth_deg",
     ):
-        value = _number(assembly.get(field))
+        raw_value = (
+            assembly.get(field, 0.0)
+            if field == "initial_azimuth_deg"
+            else assembly.get(field)
+        )
+        value = _number(raw_value)
         path = f"assembly.{field}"
         if value is None or not math.isfinite(value):
             issues.append(
@@ -241,6 +247,33 @@ def validate_propeller_payload(
     if issues:
         raise PropellerPreflightError(issues)
     try:
-        return PropellerSpec.model_validate(payload)
+        spec = PropellerSpec.model_validate(payload)
     except ValidationError as exc:
         raise PropellerPreflightError(_pydantic_issues(exc)) from exc
+    try:
+        # Section resolution is the canonical shared semantic boundary. It checks
+        # airfoil/thickness/TE compatibility without adaptive curve resolution,
+        # CAD construction, filesystem writes, or geometry-engine startup.
+        resolve_airfoil_sections(spec.blade_spec)
+    except BladeSemanticError as exc:
+        raise PropellerPreflightError(
+            [
+                ValidationIssue(
+                    "invalid_blade_spec",
+                    f"blade_spec.{exc.field}",
+                    str(exc),
+                    exc.context,
+                )
+            ]
+        ) from exc
+    except (ValueError, RuntimeError) as exc:
+        raise PropellerPreflightError(
+            [
+                ValidationIssue(
+                    "invalid_blade_spec",
+                    "blade_spec",
+                    f"Blade engineering consistency check failed: {exc}",
+                )
+            ]
+        ) from exc
+    return spec

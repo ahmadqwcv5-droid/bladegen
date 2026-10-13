@@ -51,8 +51,9 @@ def validate_propeller(payload: Any = Body(...)) -> dict:
         "nominal_hub_guidance": guidance,
         "capabilities": capabilities(),
         "geometric_qualification": (
-            "Nominal preflight passed; final positive-volume overlap, collisions, fusion, "
-            "bore clearance, and STEP topology are measured only during build."
+            "Input structure and non-CAD engineering consistency checks passed; final "
+            "positive-volume overlap, collisions, fusion, bore clearance, and STEP "
+            "topology are measured only during build."
         ),
     }
 

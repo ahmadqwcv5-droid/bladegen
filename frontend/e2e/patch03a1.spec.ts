@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import path from 'node:path'
+import { submitBuild, waitForExactResult } from './jobIdentity'
 
 const evidence = (name: string) => path.resolve('../docs/screenshots/patch03a1', name)
 const sparseFixture = path.resolve('../backend/tests/fixtures/airfoils/independent_cambered_finite_te.dat')
@@ -125,9 +126,8 @@ test('Patch 03A.1 visual accuracy, hover mapping, warnings, and real STEP', asyn
   await dialog.getByRole('button', { name: 'Apply to Station 3' }).click()
   await expect(page.getByRole('img', { name: /Imported coordinate profile.*resolved airfoil coordinates/ })).toBeVisible({ timeout: 30_000 })
 
-  await page.getByRole('button', { name: 'Generate Blade' }).click()
-  const progress = page.getByRole('progressbar', { name: 'Blade generation progress' })
-  await expect(progress).toHaveAttribute('aria-valuenow', '100', { timeout: 360_000 })
+  const jobId = await submitBuild(page, 'Generate Blade', '/api/build')
+  await waitForExactResult(page, jobId)
   await expect(page.getByText('Overall').locator('..')).toContainText('PASS')
   await expect(page.getByText('Solid / free edges').locator('..')).toContainText('1 / 0')
   await expect(page.getByRole('link', { name: 'blade_solid.step' })).toBeVisible()

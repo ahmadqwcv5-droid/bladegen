@@ -49,6 +49,27 @@ describe('project document parsing', () => {
     expect(project.bladeSpec.thickness_distribution.points).toHaveLength(5)
   })
 
+  it('normalizes omitted azimuth to zero and preserves explicit finite values', () => {
+    const omitted = structuredClone(propeller) as PropellerSpec
+    delete (omitted.assembly as Partial<PropellerSpec['assembly']>).initial_azimuth_deg
+    const project = parseProjectDocument(JSON.stringify(omitted))
+    expect(project.assembly.initial_azimuth_deg).toBe(0)
+    expect(propellerFromProject(project).assembly.initial_azimuth_deg).toBe(0)
+
+    const explicit = structuredClone(propeller)
+    explicit.assembly.initial_azimuth_deg = 17.5
+    expect(parseProjectDocument(JSON.stringify(explicit)).assembly.initial_azimuth_deg).toBe(17.5)
+  })
+
+  it.each([null, 'zero'])('rejects explicit invalid azimuth %s', invalid => {
+    const document = structuredClone(propeller) as unknown as Record<string, unknown>
+    const assembly = document.assembly as Record<string, unknown>
+    assembly.initial_azimuth_deg = invalid
+    expect(() => parseProjectDocument(JSON.stringify(document))).toThrow(
+      'assembly.initial_azimuth_deg must be a finite number',
+    )
+  })
+
   it.each([
     ['not json', 'valid JSON'],
     [JSON.stringify({ schema_version: '0.1' }), 'Unsupported project structure'],

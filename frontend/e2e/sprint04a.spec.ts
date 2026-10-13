@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import path from 'node:path'
+import { submitBuild, waitForExactResult } from './jobIdentity'
 
 const evidenceRoot = path.resolve('../docs/screenshots/sprint04a')
 const evidence = (name: string) => path.join(evidenceRoot, name)
@@ -12,12 +13,14 @@ async function setBladeCount(page: Page, count: number) {
 
 async function generate(page: Page, count: number) {
   await setBladeCount(page, count)
-  await page.getByRole('button', { name: 'Generate Propeller' }).click()
+  const jobId = await submitBuild(page, 'Generate Propeller', '/api/propellers/build')
+  await waitForExactResult(page, jobId)
   await expect(page.getByText('Assembly validation')).toBeVisible({ timeout: 360_000 })
   await expect(page.getByText('Overall').locator('..')).toContainText('PASS')
   await expect(page.getByText('Solid / free edges').locator('..')).toContainText('1 / 0')
   await expect(page.getByRole('link', { name: 'propeller_solid.step', exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'blade_solid.step', exact: true })).toBeVisible()
+  return jobId
 }
 
 test('real full-propeller workflow builds qualified 2/3/4 blade solids and preserves identity', async ({ page }) => {
@@ -56,7 +59,7 @@ test('real full-propeller workflow builds qualified 2/3/4 blade solids and prese
 
   await setBladeCount(page, 4)
   await expect(page.getByText(/Inputs changed — regenerate/)).toBeVisible()
-  await generate(page, 4)
+  const fourBladeJobId = await generate(page, 4)
   expect(propellerBuilds).toBe(3)
   await page.getByRole('button', { name: 'Propeller Front View' }).click()
   await page.screenshot({ path: evidence('four_blade_assembly.png'), fullPage: true })
@@ -67,6 +70,11 @@ test('real full-propeller workflow builds qualified 2/3/4 blade solids and prese
   await page.screenshot({ path: evidence('assembly_validation_results.png'), fullPage: true })
 
   const specLink = page.getByRole('link', { name: 'propeller_spec.json', exact: true })
+  await expect(page.locator(`[data-result-job-id="${fourBladeJobId}"]`)).toBeVisible()
+  await expect(specLink).toHaveAttribute(
+    'href',
+    `/api/jobs/${fourBladeJobId}/artifacts/propeller_spec.json`,
+  )
   const submitted = await page.request.get(await specLink.getAttribute('href') ?? '')
   expect(submitted.ok()).toBe(true)
   const builtSpec = await submitted.json()

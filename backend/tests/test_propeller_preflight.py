@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,27 @@ def candidate(**assembly_changes):
             **assembly_changes,
         },
     }
+
+
+def set_station(candidate_spec, index, *, code=None, override="unchanged", thickness=None):
+    result = deepcopy(candidate_spec)
+    section = result["blade_spec"]["airfoil_sections"][index]
+    if code is not None:
+        section["airfoil"] = {"type": "naca4", "code": code}
+    if override != "unchanged":
+        if override is None:
+            section.pop("thickness_override_ratio", None)
+        else:
+            section["thickness_override_ratio"] = override
+    if thickness is not None:
+        station = section["r_over_R"]
+        point = next(
+            row
+            for row in result["blade_spec"]["thickness_distribution"]["points"]
+            if row["r_over_R"] == station
+        )
+        point["thickness_ratio"] = thickness
+    return result
 
 
 @pytest.mark.parametrize("diameter", [60, 80])
@@ -88,3 +110,78 @@ def test_invalid_nested_bladespec_is_sanitized():
     assert captured.value.issues[0].code == "invalid_blade_spec"
     assert "input_value" not in captured.value.detail
     assert "errors.pydantic.dev" not in captured.value.detail
+
+
+@pytest.mark.parametrize(
+    "payload, expected_ratio",
+    [
+        (set_station(candidate(), 1, code="4412", override=None, thickness=0.20), 0.12),
+        (set_station(candidate(), 1, code="0000", override=None, thickness=0.20), 0.0),
+        (set_station(candidate(), 1, code="4412", override=0.18, thickness=0.20), 0.18),
+    ],
+)
+def test_naca_thickness_semantics_reject_before_cad(payload, expected_ratio):
+    with pytest.raises(PropellerPreflightError) as captured:
+        validate_propeller_payload(payload)
+    issue = captured.value.issues[0]
+    assert issue.code == "invalid_blade_spec"
+    assert issue.field == "blade_spec.thickness_distribution"
+    assert issue.context["station_r_over_R"] == 0.4
+    assert issue.context["evaluated_thickness_ratio"] == 0.20
+    assert issue.context["expected_thickness_ratio"] == expected_ratio
+
+
+def test_matching_explicit_naca_override_remains_supported():
+    payload = set_station(candidate(), 1, code="4412", override=0.20, thickness=0.20)
+    accepted = validate_propeller_payload(payload)
+    assert accepted.blade_spec.airfoil_sections[1].thickness_override_ratio == 0.20
+
+
+def coordinate_profile_payload(thickness):
+    payload = deepcopy(candidate())
+    section = payload["blade_spec"]["airfoil_sections"][1]
+    section["airfoil"] = {
+        "type": "coordinates",
+        "upper": [[0, 0], [0.5, 0.1], [1, 0]],
+        "lower": [[0, 0], [0.5, -0.1], [1, 0]],
+    }
+    section.pop("thickness_override_ratio", None)
+    point = payload["blade_spec"]["thickness_distribution"]["points"][1]
+    point["thickness_ratio"] = thickness
+    return payload
+
+
+def test_coordinate_profile_natural_thickness_mismatch_is_rejected():
+    with pytest.raises(PropellerPreflightError) as captured:
+        validate_propeller_payload(coordinate_profile_payload(0.18))
+    issue = captured.value.issues[0]
+    assert issue.code == "invalid_blade_spec"
+    assert issue.context["selected_airfoil"] == "coordinate profile"
+    assert issue.context["natural_thickness_ratio"] == pytest.approx(0.20)
+
+
+def test_valid_coordinate_profile_is_accepted_without_modification():
+    payload = coordinate_profile_payload(0.20)
+    accepted = validate_propeller_payload(payload)
+    assert accepted.blade_spec.airfoil_sections[1].airfoil.model_dump(mode="json") == payload[
+        "blade_spec"
+    ]["airfoil_sections"][1]["airfoil"]
+
+
+def test_missing_and_explicit_zero_azimuth_normalize_equivalently():
+    omitted = candidate()
+    omitted["assembly"].pop("initial_azimuth_deg")
+    explicit = candidate(initial_azimuth_deg=0)
+    omitted_spec = validate_propeller_payload(omitted)
+    explicit_spec = validate_propeller_payload(explicit)
+    assert omitted_spec.assembly == explicit_spec.assembly
+    assert omitted_spec.assembly.initial_azimuth_deg == 0.0
+    retained = validate_propeller_payload(candidate(initial_azimuth_deg=17.5))
+    assert retained.assembly.initial_azimuth_deg == 17.5
+
+
+@pytest.mark.parametrize("invalid", [None, "zero"])
+def test_explicit_invalid_azimuth_is_not_defaulted(invalid):
+    with pytest.raises(PropellerPreflightError) as captured:
+        validate_propeller_payload(candidate(initial_azimuth_deg=invalid))
+    assert captured.value.issues[0].field == "assembly.initial_azimuth_deg"

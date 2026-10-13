@@ -1,5 +1,13 @@
 # Patch 04A.1 — Assembly Validation, Result Clarity, and Project Save/Open
 
+> **Patch 04A.2 correction:** The 04A.1 browser report called a second page in
+> the same browser context a “fresh browser session,” and its generic result
+> helper could observe an older successful result while a newer identical build
+> was running. Patch 04A.2 preserves the historical measurements below but
+> strengthens the proof with `browser.newContext()`, complete job IDs, exact-job
+> polling, artifact ownership checks, and adversarial stale-result tests. See
+> [the Patch 04A.2 report](PATCH_04A_2_REPORT.md).
+
 ## Outcome
 
 Patch 04A.1 is a **PASS**. It preserves the Sprint 04A assembly engine and

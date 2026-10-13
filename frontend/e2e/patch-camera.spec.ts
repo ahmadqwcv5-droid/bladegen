@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import path from 'node:path'
+import { submitBuild, waitForExactResult } from './jobIdentity'
 
 const evidenceRoot = path.resolve('../docs/screenshots/patch02_1_1')
 const exampleRoot = path.resolve('../examples')
@@ -24,8 +25,8 @@ const cases = [
 
 async function loadSpec(page: Page, filename: string, stations: number) {
   await page.locator('input[type=file]').setInputFiles(path.join(exampleRoot, filename))
-  await expect(page.getByText(`Airfoil Stations (${stations})`)).toBeVisible()
-  await expect(page.getByText(/Opened and validated/)).toBeVisible()
+  await expect(page.getByText(`Airfoil Stations (${stations})`)).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText(/Opened and validated/)).toBeVisible({ timeout: 30_000 })
 }
 
 test('Face/Edge camera and adaptive framing work on 3, 5, and 8-section real blades', async ({ page }) => {
@@ -45,10 +46,15 @@ test('Face/Edge camera and adaptive framing work on 3, 5, and 8-section real bla
 
   await page.goto('/')
   await expect(page.getByText('Airfoil Stations (5)')).toBeVisible()
+  await expect(page.locator('.current-design-status')).toContainText(
+    'BladeSpec example loaded',
+    { timeout: 30_000 },
+  )
+  await expect(page.getByText(/Canonical design preview is current/)).toBeVisible({ timeout: 30_000 })
 
   for (const blade of cases) {
     await loadSpec(page, blade.file, blade.stations)
-    await page.getByRole('button', { name: 'Generate Blade' }).click()
+    const jobId = await submitBuild(page, 'Generate Blade', '/api/build')
     await expect(page.getByText(/Active job .* · (queued|running)/)).toBeVisible({ timeout: 30_000 })
 
     const progress = page.getByRole('progressbar', { name: 'Blade generation progress' })
@@ -57,7 +63,7 @@ test('Face/Edge camera and adaptive framing work on 3, 5, and 8-section real bla
       timeout: 90_000,
     }).toBeGreaterThan(0)
     expect(Number(await progress.getAttribute('aria-valuenow'))).toBeLessThan(100)
-    await expect(progress).toHaveAttribute('aria-valuenow', '100', { timeout: 300_000 })
+    await waitForExactResult(page, jobId, 300_000)
     await expect(page.getByText('OCP solid preview')).toBeVisible({ timeout: 30_000 })
 
     const shell = page.locator('.viewer-shell')
