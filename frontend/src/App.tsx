@@ -13,11 +13,13 @@ import {
 import { AirfoilComparison } from './components/AirfoilComparison'
 import { AirfoilInspector } from './components/AirfoilInspector'
 import { AirfoilSelector } from './components/AirfoilSelector'
+import { AirfoilStationSetupDialog } from './components/AirfoilStationSetupDialog'
 import { BladeViewer } from './components/BladeViewer'
 import { makeStationGuide, type StationGuide } from './components/stationGuides'
 import { BuildProgress } from './components/BuildProgress'
 import { DistributionChart } from './components/DistributionChart'
 import { DistributionTable } from './components/DistributionTable'
+import { DistributionImportDialog } from './components/DistributionImportDialog'
 import { NumericInput } from './components/NumericInput'
 import { applyAirfoilProfile } from './editor/airfoilSelection'
 import {
@@ -69,6 +71,7 @@ import './sprint03a.css'
 import './sprint03b.css'
 import './sprint03c.css'
 import './sprint04a.css'
+import './sprint04b.css'
 
 type StationResult = {
   requested_r_over_R: number
@@ -199,6 +202,10 @@ export default function App() {
   const [comparisonAId, setComparisonAId] = useState('')
   const [comparisonBId, setComparisonBId] = useState('')
   const [selectorStation, setSelectorStation] = useState<number>()
+  const [selectorTargets, setSelectorTargets] = useState<number[]>([])
+  const [selectedProfileStationIds, setSelectedProfileStationIds] = useState<string[]>([])
+  const [distributionImportSnapshot, setDistributionImportSnapshot] = useState<BladeSpec>()
+  const [stationSetupSnapshot, setStationSetupSnapshot] = useState<BladeSpec>()
   const [activeDistribution, setActiveDistribution] = useState<keyof DesignPreview['distributions']>('chord')
   const [curveInteraction, setCurveInteraction] = useState<ChartInteraction>('idle')
   const [curveCancelVersion, setCurveCancelVersion] = useState(0)
@@ -226,6 +233,15 @@ export default function App() {
     curveHistory.current.clear()
     refreshHistory()
   }
+  const resetStationUi = (next: BladeSpec) => {
+    const ids = newIds(next.airfoil_sections.length)
+    setRowIds(ids)
+    setProfileNames(next.airfoil_sections.map(stationLabel))
+    setSelectedStationId(ids[0] ?? '')
+    setComparisonAId(ids[0] ?? '')
+    setComparisonBId(ids[1] ?? ids[0] ?? '')
+    setSelectedProfileStationIds([])
+  }
   const markDraftModified = () => {
     inputValidationRevision.current += 1
     setDraftValidation({ state: 'modified' })
@@ -250,6 +266,10 @@ export default function App() {
     setComparisonBId(ids[1] ?? ids[0] ?? '')
     setInspectionMode('single')
     setSelectorStation(undefined)
+    setSelectorTargets([])
+    setSelectedProfileStationIds([])
+    setDistributionImportSnapshot(undefined)
+    setStationSetupSnapshot(undefined)
     setEpoch(value => value + 1)
     setErrors([])
     setValidationIssues([])
@@ -317,6 +337,7 @@ export default function App() {
     const next = curveHistory.current.undo(current)
     refreshHistory()
     if (!next) return
+    if (JSON.stringify(current.airfoil_sections) !== JSON.stringify(next.airfoil_sections)) resetStationUi(next)
     markDraftModified()
     setSpec(next)
     setErrors(validateEditorSpec(next))
@@ -329,6 +350,7 @@ export default function App() {
     const next = curveHistory.current.redo(current)
     refreshHistory()
     if (!next) return
+    if (JSON.stringify(current.airfoil_sections) !== JSON.stringify(next.airfoil_sections)) resetStationUi(next)
     markDraftModified()
     setSpec(next)
     setErrors(validateEditorSpec(next))
@@ -436,10 +458,20 @@ export default function App() {
     setSpec(next)
     setErrors(validateEditorSpec(next))
   }
-  const commitCurveCandidate = async (candidate: BladeSpec, label: string): Promise<boolean> => {
+  const commitCurveCandidate = async (
+    candidate: BladeSpec,
+    label: string,
+    expectedSnapshot?: string,
+  ): Promise<boolean> => {
     const before = specRef.current
     if (!before || curveInteraction === 'validating') return false
-    if (canonicalJson(candidate) === canonicalJson(before)) return true
+    const beforeSnapshot = canonicalJson(before)
+    if (expectedSnapshot && beforeSnapshot !== expectedSnapshot) {
+      setErrors(['The design changed after this review opened. Reopen the operation to review values against the current snapshot.'])
+      setMessage(`${label} cancelled because the design changed`)
+      return false
+    }
+    if (canonicalJson(candidate) === beforeSnapshot) return true
     const local = validateEditorSpec(candidate)
     if (local.length) {
       setErrors(local)
@@ -448,7 +480,6 @@ export default function App() {
       return false
     }
     const token = ++curveValidationRevision.current
-    const beforeSnapshot = canonicalJson(before)
     setCurveInteraction('validating')
     setErrors([])
     setMessage(`Validating ${label}…`)
@@ -485,6 +516,7 @@ export default function App() {
   }
   const field = <K extends keyof BladeSpec>(key: K, value: BladeSpec[K]) => update({ ...spec, [key]: value })
   const assemblyField = <K extends keyof AssemblySpec>(key: K, value: AssemblySpec[K]) => {
+    cancelCurveWork()
     markDraftModified()
     setAssembly(current => ({ ...current, [key]: value }))
     setErrors([])
@@ -492,6 +524,9 @@ export default function App() {
   }
   const switchDesignMode = (mode: 'blade' | 'propeller') => {
     if (mode === designMode) return
+    cancelCurveWork()
+    setDistributionImportSnapshot(undefined)
+    setStationSetupSnapshot(undefined)
     markDraftModified()
     setDesignMode(mode)
     setMessage(`${mode === 'propeller' ? 'Full Propeller' : 'Single Blade'} mode selected`)
@@ -556,14 +591,45 @@ export default function App() {
       ? setThicknessOverride(spec, index, effectiveThickness(spec, section))
       : clearThicknessOverride(spec, index))
   }
-  const applyProfile = (index: number, profile: AirfoilProfile) => {
+  const applyProfiles = async (
+    indices: number[],
+    profile: AirfoilProfile,
+    constantThickness = false,
+  ) => {
     try {
-      update(applyAirfoilProfile(spec, index, profile))
-      setProfileNames(names => names.map((name, current) => current === index ? profile.display_name : name))
-      setSelectedStationId(rowIds[index])
+      const unique = [...new Set(indices)].sort((left, right) => left - right)
+      let candidate = spec
+      for (const index of unique) candidate = applyAirfoilProfile(candidate, index, profile)
+      if (constantThickness) {
+        if (unique.length !== spec.airfoil_sections.length) {
+          throw new Error('Select every airfoil station before replacing Thickness with a common constant')
+        }
+        const ratio = profile.airfoil.type === 'coordinates'
+          ? profile.metrics.max_thickness_ratio
+          : Number(profile.airfoil.code.slice(2)) / 100
+        candidate = {
+          ...candidate,
+          thickness_distribution: {
+            interpolation: candidate.thickness_distribution.interpolation,
+            points: [
+              { r_over_R: candidate.root_radius_ratio, thickness_ratio: ratio },
+              { r_over_R: 1, thickness_ratio: ratio },
+            ],
+          },
+        }
+      }
+      const accepted = await commitCurveCandidate(
+        candidate,
+        `Apply ${profile.display_name} to ${unique.length} airfoil station${unique.length === 1 ? '' : 's'}`,
+      )
+      if (!accepted) return
+      setProfileNames(names => names.map((name, current) => unique.includes(current) ? profile.display_name : name))
+      setSelectedStationId(rowIds[unique[0]])
       setInspectionMode('single')
       setSelectorStation(undefined)
-      setMessage(`${profile.display_name} applied to station ${index + 1}; design preview updating`)
+      setSelectorTargets([])
+      setSelectedProfileStationIds([])
+      setMessage(`${profile.display_name} applied to ${unique.length} station${unique.length === 1 ? '' : 's'}; design preview updating`)
     } catch (error) { setErrors([error instanceof Error ? error.message : String(error)]) }
   }
   const validateCurrentInputs = async (): Promise<boolean> => {
@@ -738,7 +804,7 @@ export default function App() {
     <main>
       <header>
         <div>
-          <p className="eyebrow">LEVEL 1 · PATCH 04A.1</p>
+          <p className="eyebrow">LEVEL 1 · SPRINT 04B</p>
           <h1>BladeGen</h1>
           <p>One validated blade → OCP propeller assembly → independently qualified solid</p>
         </div>
@@ -822,23 +888,29 @@ export default function App() {
           </section>
 
           <section>
-            <div className="section-title"><h2>Airfoil Stations ({spec.airfoil_sections.length})</h2><button onClick={addStation}>Add Airfoil Station</button></div>
+            <div className="section-title"><h2>Airfoil Stations ({spec.airfoil_sections.length})</h2><div className="section-actions"><button onClick={addStation}>Add Airfoil Station</button><button onClick={() => setStationSetupSnapshot(structuredClone(spec))}>Set Up Airfoil Stations</button><button disabled={!selectedProfileStationIds.length} onClick={() => {
+              const targets = selectedProfileStationIds.map(id => rowIds.indexOf(id)).filter(index => index >= 0)
+              if (!targets.length) return
+              setSelectorTargets(targets)
+              setSelectorStation(targets[0])
+            }}>Apply Profile to Selected Stations</button></div></div>
             <p className="selected-station-summary">{inspectionMode === 'single'
               ? <>Inspecting Station {selectedStation + 1} · r/R {spec.airfoil_sections[selectedStation]?.r_over_R.toFixed(4)}</>
               : <>Comparing Station A {rowIds.indexOf(comparisonAId) + 1} with Station B {rowIds.indexOf(comparisonBId) + 1}</>}</p>
             <div className="station-table-scroll"><table>
-              <thead><tr><th>r/R</th><th>Profile</th><th>TE mm</th><th>Effective t/c</th><th>Override</th><th>Status</th><th /></tr></thead>
+              <thead><tr><th>Select</th><th>r/R</th><th>Profile</th><th>TE mm</th><th>Effective t/c</th><th>Override</th><th>Status</th><th /></tr></thead>
               <tbody>{spec.airfoil_sections.map((section, index) => {
                 const stationId = rowIds[index]
                 const rowState = inspectionMode === 'single' && selectedStationId === stationId ? 'selected' : inspectionMode === 'compare' && comparisonAId === stationId ? 'compare-a' : inspectionMode === 'compare' && comparisonBId === stationId ? 'compare-b' : ''
                 return <tr key={stationId} className={'station-row ' + rowState} data-station-id={stationId}>
+                <td><input aria-label={`Select airfoil station ${index + 1}`} type="checkbox" checked={selectedProfileStationIds.includes(stationId)} onChange={event => setSelectedProfileStationIds(current => event.target.checked ? [...current, stationId] : current.filter(id => id !== stationId))} /></td>
                 <td><NumericInput label={`Airfoil radius ${index + 1}`} step=".01" value={section.r_over_R} disabled={index === 0 || index === spec.airfoil_sections.length - 1} onCommit={value => changeStationRadius(index, value)} /></td>
                 <td className="station-profile">
                   <span className="station-profile-name">{profileNames[index] ?? stationLabel(section)}</span>
                   {section.airfoil.type === 'naca4'
                     ? <input aria-label={`NACA code ${index + 1}`} inputMode="numeric" maxLength={4} value={section.airfoil.code} onChange={event => changeNaca(index, event.target.value)} />
                     : <details><summary>Embedded coordinates</summary><pre>{JSON.stringify(section.airfoil, null, 2)}</pre></details>}
-                  <div className="station-profile-actions"><button onClick={() => setSelectorStation(index)}>Choose from Library</button><button onClick={() => { setSelectedStationId(stationId); setInspectionMode('single') }}>Inspect</button><button onClick={() => { setComparisonAId(stationId); setComparisonBId(current => current === stationId ? rowIds.find(id => id !== stationId) ?? stationId : current); setInspectionMode('compare') }}>Compare as A</button></div>
+                  <div className="station-profile-actions"><button onClick={() => { setSelectorTargets([index]); setSelectorStation(index) }}>Choose from Library</button><button onClick={() => { setSelectedStationId(stationId); setInspectionMode('single') }}>Inspect</button><button onClick={() => { setComparisonAId(stationId); setComparisonBId(current => current === stationId ? rowIds.find(id => id !== stationId) ?? stationId : current); setInspectionMode('compare') }}>Compare as A</button></div>
                 </td>
                 <td><NumericInput label={`TE thickness ${index + 1}`} step=".1" value={section.trailing_edge_thickness_mm} onCommit={value => updateSection(index, { trailing_edge_thickness_mm: value })} /></td>
                 <td>{effectiveThickness(spec, section).toFixed(4)}</td>
@@ -868,7 +940,7 @@ export default function App() {
           </section>
 
           <section>
-            <h2>Independent Spanwise Distributions</h2>
+            <div className="section-title"><div><h2>Independent Spanwise Distributions</h2><p className="hint">Distribution controls are independent from airfoil stations and computed preview samples.</p></div><button onClick={() => setDistributionImportSnapshot(structuredClone(spec))}>Import Distributions</button></div>
             <div className="distribution-visual">
               <div className="curve-history-toolbar"><span aria-live="polite">{historyStatus}</span><span className={`curve-edit-state ${curveInteraction}`}>{curveInteraction === 'idle' ? 'Ready' : curveInteraction === 'drafting' ? 'Draft — release to validate' : 'Validating candidate…'}</span></div>
               <div className="distribution-tabs" role="group" aria-label="Distribution chart selection">{CURVES.map(curve => <button key={curve.name} aria-pressed={activeDistribution === curve.name} onClick={() => { cancelCurveWork(); setActiveDistribution(curve.name) }}>{curve.title}</button>)}</div>
@@ -924,8 +996,21 @@ export default function App() {
       {selectorStation !== undefined && <AirfoilSelector
         stationIndex={selectorStation}
         radius={spec.airfoil_sections[selectorStation].r_over_R}
-        onApply={profile => applyProfile(selectorStation, profile)}
-        onCancel={() => setSelectorStation(undefined)}
+        targetStations={(selectorTargets.length ? selectorTargets : [selectorStation]).map(index => ({ index, radius: spec.airfoil_sections[index].r_over_R }))}
+        onApply={(profile, options) => { void applyProfiles(selectorTargets.length ? selectorTargets : [selectorStation], profile, options.constantThickness) }}
+        onCancel={() => { setSelectorStation(undefined); setSelectorTargets([]) }}
+      />}
+      {distributionImportSnapshot && <DistributionImportDialog
+        snapshot={distributionImportSnapshot}
+        onApply={commitCurveCandidate}
+        onCancel={() => setDistributionImportSnapshot(undefined)}
+      />}
+      {stationSetupSnapshot && <AirfoilStationSetupDialog
+        snapshot={stationSetupSnapshot}
+        profileNames={profileNames}
+        onApply={commitCurveCandidate}
+        onCommitted={resetStationUi}
+        onCancel={() => setStationSetupSnapshot(undefined)}
       />}
     </main>
   )

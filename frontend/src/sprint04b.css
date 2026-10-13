@@ -1,0 +1,67 @@
+.section-actions,
+.dialog-actions,
+.bulk-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .55rem;
+}
+
+.bulk-dialog {
+  width: min(1120px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1.25rem;
+  border-radius: 16px;
+  background: var(--panel, #fff);
+  box-shadow: 0 24px 80px #0005;
+}
+
+.bulk-source-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, .7fr) minmax(320px, 1.3fr);
+  gap: .8rem;
+  align-items: start;
+}
+
+.bulk-source-grid textarea,
+.station-setup-dialog textarea {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.mapping-table,
+.candidate-preview {
+  margin-block: .8rem;
+  overflow: auto;
+}
+
+.mapping-table select {
+  min-width: 8rem;
+}
+
+.column-warnings,
+.candidate-review {
+  display: grid;
+  gap: .55rem;
+  margin-block: .8rem;
+  padding: .8rem;
+  border: 1px solid #d7a844;
+  border-radius: 10px;
+  background: #fff9e9;
+}
+
+.candidate-review {
+  border-color: #8eb4a0;
+  background: #f1faf5;
+}
+
+.candidate-preview table {
+  min-width: max-content;
+}
+
+@media (max-width: 760px) {
+  .bulk-dialog { width: calc(100vw - .75rem); padding: .75rem; }
+  .bulk-source-grid { grid-template-columns: 1fr; }
+  .section-actions { width: 100%; }
+}

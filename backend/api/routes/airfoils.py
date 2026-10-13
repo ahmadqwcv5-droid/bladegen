@@ -13,8 +13,7 @@ from bladegen.airfoils.diagnostics import coordinate_profile_diagnostics
 from bladegen.airfoils.geometry_metrics import measure_airfoil
 from bladegen.airfoils.importers import import_airfoil
 from bladegen.airfoils.library import AirfoilLibrary
-from bladegen.curves.canonical import evaluate_curve
-from bladegen.curves.resolver import resolve_blade_spec
+from bladegen.curves.resolver import prepare_blade_curves, resolve_blade_spec
 from bladegen.models import BladeSpec
 
 router = APIRouter()
@@ -62,7 +61,7 @@ async def upload_airfoil(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-def _profile_payload(section, resolved_section, spec: BladeSpec) -> dict:
+def _profile_payload(section, resolved_section, thickness_evaluator) -> dict:
     diagnostics = None
     if section.airfoil.type == "naca4":
         source_upper, source_lower = naca_4digit_coordinates(section.airfoil.code)
@@ -73,9 +72,7 @@ def _profile_payload(section, resolved_section, spec: BladeSpec) -> dict:
         name = "Imported coordinate profile"
         nominal = measure_airfoil(source_upper, source_lower).max_thickness_ratio
         diagnostics = coordinate_profile_diagnostics(source_upper, source_lower)
-    effective = evaluate_curve(
-        spec.thickness_distribution, section.r_over_R, "thickness_ratio"
-    )
+    effective = thickness_evaluator.evaluate(section.r_over_R)
     return {
         "r_over_R": section.r_over_R,
         "name": name,
@@ -107,7 +104,8 @@ def _profile_payload(section, resolved_section, spec: BladeSpec) -> dict:
 def design_preview(payload: dict) -> dict:
     try:
         spec = BladeSpec.model_validate(payload)
-        resolved = resolve_blade_spec(spec)
+        evaluators = prepare_blade_curves(spec)
+        resolved = resolve_blade_spec(spec, evaluators)
     except (ValidationError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -122,9 +120,10 @@ def design_preview(payload: dict) -> dict:
     distributions = {}
     for name, curve, field, scale, unit in definitions:
         locations = np.linspace(curve.points[0].r_over_R, curve.points[-1].r_over_R, 251)
+        values = evaluators[name].evaluate_many(locations) * scale
         samples = [
-            [float(location), evaluate_curve(curve, float(location), field) * scale]
-            for location in locations
+            [float(location), float(value)]
+            for location, value in zip(locations, values)
         ]
         controls = [
             [point.r_over_R, float(getattr(point, field)) * scale] for point in curve.points
@@ -140,7 +139,7 @@ def design_preview(payload: dict) -> dict:
     return {
         "schema_version": "1",
         "stations": [
-            _profile_payload(section, resolved_section, spec)
+            _profile_payload(section, resolved_section, evaluators["thickness"])
             for section, resolved_section in zip(spec.airfoil_sections, resolved.airfoil_sections)
         ],
         "distributions": distributions,

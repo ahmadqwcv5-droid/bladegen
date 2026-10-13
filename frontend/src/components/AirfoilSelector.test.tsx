@@ -48,7 +48,7 @@ describe('Airfoil Selector', () => {
     await user.click(screen.getByRole('button', { name: /NACA 2412/ }))
     expect(await screen.findByRole('img', { name: /NACA 2412 source airfoil coordinates/ })).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Apply to Station 3' }))
-    expect(apply).toHaveBeenCalledWith(naca)
+    expect(apply).toHaveBeenCalledWith(naca, { constantThickness: false })
 
     render(<AirfoilSelector stationIndex={1} radius={.4} onApply={apply} onCancel={cancel} />)
     await user.click(screen.getAllByRole('button', { name: 'Cancel' }).at(-1)!)

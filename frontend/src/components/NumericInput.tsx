@@ -55,6 +55,7 @@ export function NumericInput({ value, onCommit, label, step = 'any', disabled = 
     value={draft}
     disabled={disabled}
     onChange={event => { edited.current = true; setDraft(event.target.value) }}
+    onFocus={() => { if (!edited.current) setDraft(String(value)) }}
     onBlur={() => { void commit() }}
   />{error && <small className="field-error">{error}</small>}</span>
 }

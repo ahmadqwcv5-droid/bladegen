@@ -167,6 +167,12 @@ Dynamic assembly preflight, result-state separation, runtime capabilities, and
 complete project save/open are documented in the
 [Patch 04A.1 report](docs/PATCH_04A_1_REPORT.md) and
 [acceptance matrix](docs/PATCH_04A_1_ACCEPTANCE_MATRIX.md).
+Sprint 04B reviewed bulk distribution input, airfoil-station setup, responsive
+canonical evaluation, and qualified generic CAD evidence are documented in the
+[Sprint 04B report](docs/SPRINT_04B_REPORT.md),
+[acceptance matrix](docs/SPRINT_04B_ACCEPTANCE_MATRIX.md),
+[performance qualification](docs/SPRINT_04B_PERFORMANCE.md), and
+[bulk-input format guide](docs/BULK_INPUT_FORMATS.md).
 
 ## Limitations and licensing
 
