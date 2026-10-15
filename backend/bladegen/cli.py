@@ -8,6 +8,7 @@ from pathlib import Path
 
 from bladegen.pipeline import build
 from bladegen.propeller_pipeline import build_propeller
+from bladegen.runtime.manager import RuntimeReadinessError, require_runtime_ready
 
 
 def main() -> int:
@@ -36,7 +37,34 @@ def main() -> int:
         type=Path,
         help="Optional atomic progress JSON path for an external job supervisor.",
     )
+    runtime_parser = subparsers.add_parser(
+        "runtime-info", help="Inspect the selected fixed-plane generation runtime"
+    )
+    runtime_parser.add_argument("--json", action="store_true", dest="as_json")
+    subparsers.add_parser("doctor", help="Check fixed-plane generation readiness")
     args = parser.parse_args()
+
+    if args.command in {"runtime-info", "doctor"}:
+        try:
+            identity = require_runtime_ready()
+        except RuntimeReadinessError as exc:
+            payload = {"ready": False, "error": str(exc)}
+            if args.command == "runtime-info" and args.as_json:
+                print(json.dumps(payload, indent=2))
+            else:
+                print(f"Generation runtime: NOT READY\n{exc}")
+            return 2
+        payload = {"ready": True, **identity.private_dict()}
+        if args.command == "runtime-info" and args.as_json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(
+                "Generation runtime: READY\n"
+                f"Build: {identity.build_id}\n"
+                f"Contract: {identity.construction_contract}\n"
+                f"Root: {identity.root}"
+            )
+        return 0
 
     if args.command == "build-propeller":
         result = build_propeller(args.spec, args.output, args.progress_file)
@@ -46,6 +74,7 @@ def main() -> int:
             "solid": result["assembly_validation"]["final_after_reimport"],
             "assembly": result["assembly_validation"],
             "outputs": result["outputs"],
+            "engine": result.get("engine"),
         }
     else:
         result = build(args.spec, args.output, args.reference_step, args.progress_file)
@@ -55,6 +84,7 @@ def main() -> int:
             "solid": result["solidification"]["solid_after_reimport"],
             "x57_regression": result.get("x57_regression"),
             "outputs": result["outputs"],
+            "engine": result["engine"],
         }
     print(json.dumps(summary, indent=2))
     return 0 if result["status"] == "PASS" else 1

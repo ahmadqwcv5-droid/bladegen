@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { BladeSpec } from '../types/bladespec'
 import { canonicalJson } from '../editor/bladespecEditor'
 import {
@@ -9,13 +9,14 @@ import {
 type Props = {
   snapshot: BladeSpec
   profileNames: string[]
-  onApply: (candidate: BladeSpec, label: string, expectedSnapshot: string) => Promise<boolean>
+  onApply: (candidate: BladeSpec, label: string, expectedSnapshot: string, signal: AbortSignal) => Promise<boolean>
   onCommitted: (candidate: BladeSpec) => void
   onCancel: () => void
 }
 
 export function AirfoilStationSetupDialog({ snapshot, profileNames, onApply, onCommitted, onCancel }: Props) {
   const expectedSnapshot = useRef(canonicalJson(snapshot)).current
+  const transaction = useRef<AbortController | undefined>(undefined)
   const [options, setOptions] = useState<StationSetupOptions>({
     mode: 'uniform',
     count: snapshot.airfoil_sections.length,
@@ -27,12 +28,19 @@ export function AirfoilStationSetupDialog({ snapshot, profileNames, onApply, onC
   })
   const [error, setError] = useState('')
   const [applying, setApplying] = useState(false)
+  useEffect(() => () => transaction.current?.abort(), [])
+  const cancel = () => {
+    transaction.current?.abort()
+    onCancel()
+  }
   const candidate = useMemo(() => {
     try { return { value: buildStationSetupCandidate(snapshot, options), error: '' } }
     catch (reason) { return { value: undefined, error: reason instanceof Error ? reason.message : String(reason) } }
   }, [options, snapshot])
   const apply = async () => {
     if (!candidate.value) return
+    const controller = new AbortController()
+    transaction.current = controller
     setApplying(true)
     setError('')
     try {
@@ -40,14 +48,19 @@ export function AirfoilStationSetupDialog({ snapshot, profileNames, onApply, onC
         candidate.value.spec,
         `Set up ${candidate.value.radii.length} airfoil stations`,
         expectedSnapshot,
+        controller.signal,
       )
+      if (controller.signal.aborted) return
       if (accepted) { onCommitted(candidate.value.spec); onCancel() }
       else setError('Station setup was not committed; review current validation messages.')
-    } finally { setApplying(false) }
+    } finally {
+      if (transaction.current === controller) transaction.current = undefined
+      if (!controller.signal.aborted) setApplying(false)
+    }
   }
   return <div className="selector-backdrop" role="dialog" aria-modal="true" aria-label="Set Up Airfoil Stations">
     <section className="bulk-dialog station-setup-dialog">
-      <div className="section-title"><div><p className="eyebrow">PLACEMENT TEMPLATE</p><h2>Set Up Airfoil Stations</h2></div><button onClick={onCancel}>Cancel</button></div>
+      <div className="section-title"><div><p className="eyebrow">PLACEMENT TEMPLATE</p><h2>Set Up Airfoil Stations</h2></div><button onClick={cancel}>Cancel</button></div>
       <p>This organizes engineer-defined radial profile stations. It is not aerodynamic design and may change the loft.</p>
       <div className="grid">
         <label>Placement mode<select aria-label="Station placement mode" value={options.mode} onChange={event => setOptions({ ...options, mode: event.target.value as 'uniform' | 'explicit' })}><option value="uniform">Uniform root-to-tip count</option><option value="explicit">Explicit r/R list</option></select></label>
@@ -66,7 +79,7 @@ export function AirfoilStationSetupDialog({ snapshot, profileNames, onApply, onC
         <p>Radii: {candidate.value.radii.map(radius => Number(radius.toPrecision(12))).join(', ')}</p>
         <p>Thickness coordination controls: {candidate.value.oldThicknessPointCount} → {candidate.value.newThicknessPointCount}. Chord, Twist, Rake, and Skew remain unchanged.</p>
         <p className="hint">A real station replacement marks existing CAD stale. It does not claim that the previous loft is preserved.</p>
-        <div className="dialog-actions"><button onClick={onCancel}>Cancel</button><button className="primary" disabled={applying || !candidate.value.changed} onClick={() => void apply()}>{applying ? 'Validating candidate…' : candidate.value.changed ? 'Apply Once' : 'No Changes'}</button></div>
+        <div className="dialog-actions"><button onClick={cancel}>Cancel</button><button className="primary" disabled={applying || !candidate.value.changed} onClick={() => void apply()}>{applying ? 'Validating candidate…' : candidate.value.changed ? 'Apply Once' : 'No Changes'}</button></div>
       </div>}
     </section>
   </div>

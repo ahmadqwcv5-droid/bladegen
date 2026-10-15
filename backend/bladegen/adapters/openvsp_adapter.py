@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
@@ -13,6 +12,8 @@ from bladegen.models import (
     ResolvedCurve,
     RotationDirection,
 )
+from bladegen.runtime.manager import load_openvsp_runtime
+from bladegen.runtime.provenance import record_loaded_runtime
 
 MM_PER_INCH = 25.4
 
@@ -56,27 +57,14 @@ class AdapterResult:
     step_path: Path
     readback: dict
     api_errors: list[str]
+    engine_identity: dict
 
 
 def _load_openvsp() -> ModuleType:
-    try:
-        import openvsp_config
-    except ModuleNotFoundError:
-        root = os.environ.get("OPENVSP_ROOT")
-        if not root:
-            raise RuntimeError(
-                "OpenVSP Python API not found. Run ./scripts/setup_openvsp.sh and start the "
-                "backend with ./scripts/start_backend.sh, or set OPENVSP_ROOT to the official "
-                "OpenVSP distribution root."
-            )
-        python_root = Path(root) / "python"
-        for child in ("openvsp", "openvsp_config", "degen_geom", "utilities"):
-            sys.path.insert(0, str(python_root / child))
-        import openvsp_config
-    openvsp_config.LOAD_GRAPHICS = False
-    import openvsp as vsp
-
-    return vsp
+    """Load only the selected, verified fixed-plane runtime in this CAD worker."""
+    return load_openvsp_runtime(
+        expected_fingerprint=os.environ.get("BLADEGEN_EXPECTED_RUNTIME_FINGERPRINT")
+    )[0]
 
 
 def interpolation_name(value: int, vsp: ModuleType) -> str:
@@ -325,9 +313,17 @@ def readback_bladespec(vsp: ModuleType, prop_id: str, name: str, schema_version:
     }
 
 
-def build_and_export(resolved: ResolvedBladeSpec, output_dir: Path) -> AdapterResult:
+def build_and_export(
+    resolved: ResolvedBladeSpec,
+    output_dir: Path,
+    engine_manifest_path: Path | None = None,
+) -> AdapterResult:
     spec = resolved.source_bladespec
-    vsp = _load_openvsp()
+    vsp, identity = load_openvsp_runtime(
+        expected_fingerprint=os.environ.get("BLADEGEN_EXPECTED_RUNTIME_FINGERPRINT")
+    )
+    if engine_manifest_path is not None:
+        record_loaded_runtime(engine_manifest_path, identity)
     output_dir.mkdir(parents=True, exist_ok=True)
     vsp.VSPRenew()
     vsp.ClearVSPModel()
@@ -349,4 +345,11 @@ def build_and_export(resolved: ResolvedBladeSpec, output_dir: Path) -> AdapterRe
     errors = _drain_errors(vsp)
     if errors:
         raise RuntimeError(f"OpenVSP export errors: {errors}")
-    return AdapterResult(prop_id, vsp3_path, step_path, readback, errors)
+    return AdapterResult(
+        prop_id,
+        vsp3_path,
+        step_path,
+        readback,
+        errors,
+        identity.safe_dict(),
+    )

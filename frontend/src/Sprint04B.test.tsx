@@ -89,6 +89,35 @@ async function loaded() {
   await screen.findByText(/Canonical design preview is current/)
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(next => { resolve = next })
+  return { promise, resolve }
+}
+
+function curveEditorSnapshot() {
+  return Object.fromEntries(['Chord', 'Twist', 'Rake', 'Skew', 'Thickness'].map(title => [title, {
+    interpolation: (screen.getByLabelText(`${title} interpolation`) as HTMLSelectElement).value,
+    radii: screen.getAllByLabelText(new RegExp(`^${title} radius \\d+$`)).map(input => (input as HTMLInputElement).value),
+    values: screen.getAllByLabelText(new RegExp(`^${title} value \\d+$`)).map(input => (input as HTMLInputElement).value),
+  }]))
+}
+
+function stationEditorSnapshot() {
+  const inputValues = (pattern: RegExp) => screen.queryAllByLabelText(pattern).map(input => (input as HTMLInputElement).value)
+  return {
+    radii: inputValues(/^Airfoil radius \d+$/),
+    trailingEdges: inputValues(/^TE thickness \d+$/),
+    nacaCodes: inputValues(/^NACA code \d+$/),
+    thicknessOverrides: inputValues(/^Thickness override \d+$/),
+    profileNames: Array.from(document.querySelectorAll('.station-profile-name'), node => node.textContent),
+  }
+}
+
+async function waitForCurveEditorIdle() {
+  await waitFor(() => expect(document.querySelector('.curve-edit-state')).toHaveTextContent('Ready'))
+}
+
 describe('Sprint 04B responsive engineering input', () => {
   it('pastes, reviews, and atomically applies four independent distributions once', async () => {
     const user = userEvent.setup()
@@ -134,6 +163,38 @@ describe('Sprint 04B responsive engineering input', () => {
     expect(api.validate).not.toHaveBeenCalled()
   })
 
+  it('does not commit a distribution import after Cancel during pending Apply', async () => {
+    const validation = deferred<Record<string, unknown>>()
+    api.validate.mockReturnValueOnce(validation.promise)
+    const user = userEvent.setup()
+    await loaded()
+    const before = curveEditorSnapshot()
+    const previewCalls = api.getDesignPreview.mock.calls.length
+    await user.click(screen.getByRole('button', { name: 'Import Distributions' }))
+    const dialog = screen.getByRole('dialog', { name: 'Import Distributions' })
+    fireEvent.change(within(dialog).getByLabelText('Distribution pasted data'), { target: { value: importedRows } })
+    await user.click(within(dialog).getByRole('button', { name: 'Review Pasted Data' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Apply Once' }))
+    await waitFor(() => expect(api.validate).toHaveBeenCalledTimes(1))
+    const signal = api.validate.mock.calls[0][1] as AbortSignal
+    expect(signal.aborted).toBe(false)
+    await user.click(within(dialog).getAllByRole('button', { name: 'Cancel' })[0])
+    expect(signal.aborted).toBe(true)
+    expect(screen.queryByRole('dialog', { name: 'Import Distributions' })).not.toBeInTheDocument()
+    validation.resolve({ valid: true })
+    await waitForCurveEditorIdle()
+    expect(curveEditorSnapshot()).toEqual(before)
+    expect(screen.getByText('Chord (6)')).toBeVisible()
+    expect(screen.getByText('Twist (6)')).toBeVisible()
+    expect(screen.getByText('Rake (6)')).toBeVisible()
+    expect(screen.getByText('Skew (6)')).toBeVisible()
+    expect(screen.getByText('Thickness (5)')).toBeVisible()
+    expect(screen.getByText('Airfoil Stations (5)')).toBeVisible()
+    expect(api.getDesignPreview).toHaveBeenCalledTimes(previewCalls)
+    expect(screen.getByRole('button', { name: 'Undo curve edit' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Undo curve edit' })).toHaveAttribute('title', 'Nothing to undo · Nothing to redo')
+  })
+
   it('sets up five stations as one validated transaction and undoes the full change', async () => {
     const user = userEvent.setup()
     await loaded()
@@ -149,6 +210,35 @@ describe('Sprint 04B responsive engineering input', () => {
     expect(api.build).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Undo curve edit' }))
     expect(await screen.findByText('Airfoil Stations (5)')).toBeVisible()
+  })
+
+  it('does not commit station setup after Cancel during pending Apply', async () => {
+    const validation = deferred<Record<string, unknown>>()
+    api.validate.mockReturnValueOnce(validation.promise)
+    const user = userEvent.setup()
+    await loaded()
+    const beforeStations = stationEditorSnapshot()
+    const beforeCurves = curveEditorSnapshot()
+    const previewCalls = api.getDesignPreview.mock.calls.length
+    await user.click(screen.getByRole('button', { name: 'Set Up Airfoil Stations' }))
+    const dialog = screen.getByRole('dialog', { name: 'Set Up Airfoil Stations' })
+    const count = within(dialog).getByLabelText('Total airfoil stations')
+    await user.clear(count)
+    await user.type(count, '3')
+    await user.click(within(dialog).getByRole('button', { name: 'Apply Once' }))
+    await waitFor(() => expect(api.validate).toHaveBeenCalledTimes(1))
+    const signal = api.validate.mock.calls[0][1] as AbortSignal
+    await user.click(within(dialog).getAllByRole('button', { name: 'Cancel' })[0])
+    expect(signal.aborted).toBe(true)
+    expect(screen.queryByRole('dialog', { name: 'Set Up Airfoil Stations' })).not.toBeInTheDocument()
+    validation.resolve({ valid: true })
+    await waitForCurveEditorIdle()
+    expect(stationEditorSnapshot()).toEqual(beforeStations)
+    expect(curveEditorSnapshot()).toEqual(beforeCurves)
+    expect(screen.getByText('Airfoil Stations (5)')).toBeVisible()
+    expect(api.getDesignPreview).toHaveBeenCalledTimes(previewCalls)
+    expect(screen.getByRole('button', { name: 'Undo curve edit' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Undo curve edit' })).toHaveAttribute('title', 'Nothing to undo · Nothing to redo')
   })
 
   it('applies one reviewed library profile to selected stations in one validation', async () => {

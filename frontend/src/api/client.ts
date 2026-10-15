@@ -35,8 +35,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json()
 }
 export const getExample = (id = 'custom_multi_airfoil_finite_te') => request<BladeSpec>(`/examples/${id}`)
-export const validate = (spec: BladeSpec) => request<Record<string, unknown>>('/validate', {
-  method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(spec),
+export const validate = (spec: BladeSpec, signal?: AbortSignal) => request<Record<string, unknown>>('/validate', {
+  method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(spec), signal,
 })
 export const build = (spec: BladeSpec) => request<Job>('/build', {
   method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(spec),

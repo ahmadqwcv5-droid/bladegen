@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from api.schemas import BuildAccepted
 from api.services.jobs import jobs
 from bladegen.assembly.capabilities import capabilities, nominal_hub_guidance
+from bladegen.runtime.manager import RuntimeReadinessError
 from bladegen.validation.propeller_preflight import (
     PropellerPreflightError,
     validate_propeller_payload,
@@ -63,7 +64,10 @@ def build_propeller(payload: Any = Body(...)) -> BuildAccepted:
     spec = _validate(payload)
     if isinstance(spec, JSONResponse):
         return spec
-    job = jobs.submit(spec.model_dump(mode="json"), build_type="propeller")
+    try:
+        job = jobs.submit(spec.model_dump(mode="json"), build_type="propeller")
+    except RuntimeReadinessError as exc:
+        return JSONResponse(status_code=503, content={"detail": str(exc)})
     return BuildAccepted(
         job_id=job.job_id,
         build_type=job.build_type,
@@ -73,4 +77,7 @@ def build_propeller(payload: Any = Body(...)) -> BuildAccepted:
         progress_percent=0,
         message="Waiting for the serialized CAD worker",
         elapsed_seconds=job.elapsed_seconds,
+        runtime_build_id=job.runtime_build_id,
+        construction_contract=job.runtime_contract,
+        runtime_fingerprint=job.runtime_fingerprint,
     )

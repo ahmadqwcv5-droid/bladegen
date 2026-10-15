@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
 
 from bladegen.models import BladeSpec
 from bladegen.pipeline import build
+from bladegen.runtime.manager import RuntimeReadinessError, require_runtime_ready
 
 ROOT = Path(__file__).resolve().parents[2]
 CASES = (
@@ -21,8 +21,10 @@ CASES = (
 def test_sprint02_real_cad_acceptance(
     filename: str, section_count: int, root: float, tmp_path: Path
 ) -> None:
-    if not os.environ.get("OPENVSP_ROOT"):
-        pytest.skip("OPENVSP_ROOT is not configured")
+    try:
+        require_runtime_ready()
+    except RuntimeReadinessError as exc:
+        pytest.skip(str(exc))
 
     spec_path = ROOT / "examples" / filename
     spec = BladeSpec.from_json(spec_path)
@@ -48,7 +50,7 @@ def test_sprint02_real_cad_acceptance(
             row for row in geometry["stations"] if "airfoil_station" in row["station_roles"]
         ]
         assert control_rows
-        assert max(
-            abs(row["measured_max_thickness_over_chord"] - 0.10)
-            for row in control_rows
-        ) <= 0.002
+        assert (
+            max(abs(row["measured_max_thickness_over_chord"] - 0.10) for row in control_rows)
+            <= 0.002
+        )

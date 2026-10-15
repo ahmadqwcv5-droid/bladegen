@@ -30,20 +30,23 @@ inputs but are not production-qualified by Sprint 04A.
 
 ## Prerequisites and installation
 
-The tested machine uses Python 3.12, the uv package manager, OpenVSP 3.54.0's official Linux Python
-API, cadquery-ocp/OpenCascade 7.9.3.1, Node 24.14.0, and npm 11.9.0.
+The tested machine uses Python 3.12, the uv package manager, BladeGen's managed
+fixed-plane OpenVSP 3.54.0 Linux Python runtime, cadquery-ocp/OpenCascade
+7.9.3.1, Node 24.14.0, and npm 11.9.0.
 
 ```bash
 ./scripts/setup_backend.sh
 cd frontend && npm install && cd ..
 ```
 
-`setup_backend.sh` installs the pinned official OpenVSP 3.54.0 Ubuntu 24.04
-runtime and `libcminpack1` under the ignored `.tooling/` directory. This is a
-local extraction and does not require root access. To repair or install only
-the CAD runtime, run `./scripts/setup_openvsp.sh`. The launch scripts detect
-this persistent installation automatically. A manually configured
-`OPENVSP_ROOT` remains supported and takes precedence.
+`setup_backend.sh` builds the pinned, project-local runtime with its required
+real Python bindings under the ignored `.tooling/` directory. This does not
+require root access or replace the retained stock runtime. To build, repair, or
+verify only the CAD runtime, run `./scripts/setup_openvsp_fixed_plane.sh`
+(`setup_openvsp.sh` is a compatibility entrypoint). `OPENVSP_ROOT` remains the
+single explicit override and takes precedence, but an invalid or stock root is
+rejected without fallback. See the
+[managed runtime guide](docs/FIXED_PLANE_RUNTIME.md).
 
 ## Run
 
@@ -113,6 +116,7 @@ CLI build:
 
 ```bash
 source scripts/openvsp_env.sh
+.venv/bin/bladegen doctor
 .venv/bin/bladegen build \
   examples/custom_multi_airfoil_finite_te.json --output output/manual
 ```
@@ -136,7 +140,8 @@ source scripts/openvsp_env.sh
 
 The HTTP equivalents are `POST /api/propellers/validate` and
 `POST /api/propellers/build`; job status and allow-listed downloads continue to
-use `/api/jobs/{job_id}` and `/api/jobs/{job_id}/artifacts`.
+use `/api/jobs/{job_id}` and `/api/jobs/{job_id}/artifacts`. `GET /api/runtime`
+reports generation readiness independently from input validity.
 
 Tests, production UI build, and browser acceptance:
 
@@ -173,6 +178,10 @@ canonical evaluation, and qualified generic CAD evidence are documented in the
 [acceptance matrix](docs/SPRINT_04B_ACCEPTANCE_MATRIX.md),
 [performance qualification](docs/SPRINT_04B_PERFORMANCE.md), and
 [bulk-input format guide](docs/BULK_INPUT_FORMATS.md).
+The managed fixed-plane native engine, fail-closed product integration, and
+fresh X-57 production qualification are recorded in the
+[FP-01 integration report](docs/FP01_INTEGRATION_REPORT.md) and
+[acceptance matrix](docs/FP01_ACCEPTANCE_MATRIX.md).
 
 ## Limitations and licensing
 

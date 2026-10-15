@@ -1,0 +1,43 @@
+{
+  "schema": "bladegen.openvsp-source-lock.v1",
+  "upstream": {
+    "name": "OpenVSP",
+    "version": "3.54.0",
+    "repository": "https://github.com/OpenVSP/OpenVSP.git",
+    "commit": "db6c6fe8f4eca27d7517f4ae0b2078abdd3fd927",
+    "archive": {
+      "url": "https://codeload.github.com/OpenVSP/OpenVSP/tar.gz/db6c6fe8f4eca27d7517f4ae0b2078abdd3fd927",
+      "sha256": "0b72cf30b68ae5b4845fd61d6cfebfa2033c9ff9188c95e335b86b6cc543c2af",
+      "size_bytes": 210326824,
+      "root_directory": "OpenVSP-db6c6fe8f4eca27d7517f4ae0b2078abdd3fd927"
+    }
+  },
+  "build": {
+    "id": "openvsp-3.54.0-bladegen-fixed-plane.1",
+    "contract": "bladegen.fixed-radial-sections.v1",
+    "capability": "fixed_radial_sections_v1",
+    "patch": "patches/0001-bladegen-fixed-radial-sections.patch",
+    "patch_sha256": "0dd6f87b867ccaeb6518f8f01f7093e4e1a05f02d0c5a268c66cc1d157ed71d3",
+    "cmake_options": {
+      "BLADEGEN_FIXED_RADIAL_SECTIONS": true,
+      "CMAKE_BUILD_TYPE": "Release",
+      "VSP_NO_API_WRAPPERS": false,
+      "VSP_NO_DOC": true,
+      "VSP_NO_GRAPHICS": true,
+      "VSP_NO_HELP": true,
+      "VSP_NO_PYDOC": true,
+      "VSP_NO_VSPAERO": true
+    }
+  },
+  "dependency_identity": {
+    "policy": "OpenVSP Libraries sources and ExternalProject definitions at the locked commit",
+    "submodules": [],
+    "build_tools": {
+      "swig": {
+        "version": "4.2.0-2ubuntu1",
+        "url": "http://archive.ubuntu.com/ubuntu/pool/universe/s/swig/swig_4.2.0-2ubuntu1_amd64.deb",
+        "sha256": "5925dc6e25348bdb350c44a9157da350ef608666b2a21f7057222e8b6aebd61d"
+      }
+    }
+  }
+}

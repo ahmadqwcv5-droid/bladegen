@@ -4,6 +4,7 @@ import pytest
 
 from bladegen.models import BladeSpec
 from bladegen.pipeline import build
+from bladegen.runtime.manager import RuntimeReadinessError, require_runtime_ready
 from bladegen.solid.ocp_solidify import inspect_shape, read_step
 from bladegen.validation.measure_sections import measure_sections
 
@@ -12,8 +13,10 @@ EXAMPLE = Path(__file__).resolve().parents[2] / "examples/custom_multi_airfoil_f
 
 @pytest.mark.integration
 def test_real_v02_build_step_reimport_and_independent_geometry(tmp_path):
-    if not __import__("os").environ.get("OPENVSP_ROOT"):
-        pytest.skip("OPENVSP_ROOT is not configured")
+    try:
+        require_runtime_ready()
+    except RuntimeReadinessError as exc:
+        pytest.skip(str(exc))
     result = build(EXAMPLE, tmp_path)
     step = tmp_path / "blade_solid.step"
     solid = inspect_shape(read_step(step))
