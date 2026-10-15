@@ -11,6 +11,7 @@ from bladegen.assembly.hub import make_bore_cutter
 from bladegen.assembly.validation import common_volume_mm3, measured_bore
 from bladegen.pipeline import build as build_blade
 from bladegen.progress import ProgressReporter, ProgressState
+from bladegen.runtime.provenance import record_completed_runtime
 from bladegen.solid.ocp_solidify import inspect_shape, read_step, write_step, write_stl
 from bladegen.validation.propeller_preflight import validate_propeller_payload
 
@@ -196,7 +197,12 @@ def build_propeller(
         )
     )
     try:
-        blade_result = build_blade(blade_input, output_dir)
+        blade_result = build_blade(
+            blade_input,
+            output_dir,
+            manifest_submitted=payload,
+            defer_engine_completion=True,
+        )
     except Exception as exc:
         raise RuntimeError(f"Reference blade generation failed: {exc}") from exc
     blade_validation_path = output_dir / "blade_validation.json"
@@ -286,6 +292,7 @@ def build_propeller(
             "backend_independent": True,
         },
         "reference_blade_validation": blade_result,
+        "engine": blade_result["engine"],
         "assembly_validation": assembly,
         "outputs": {
             "propeller_solid_step": str(propeller_step.resolve()),
@@ -294,6 +301,7 @@ def build_propeller(
             "blade_solid_step": str((output_dir / "blade_solid.step").resolve()),
             "blade_spec": str((output_dir / "blade_spec.json").resolve()),
             "blade_validation": str(blade_validation_path.resolve()),
+            "engine_manifest": str((output_dir / "engine_manifest.json").resolve()),
         },
     }
     validation_path = output_dir / "validation.json"
@@ -307,6 +315,7 @@ def build_propeller(
         )
         writer.writeheader()
         writer.writerows(_rows(result))
+    record_completed_runtime(output_dir / "engine_manifest.json")
     progress.report(
         ProgressState(
             "artifacts",

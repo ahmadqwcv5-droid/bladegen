@@ -8,6 +8,7 @@ from api.schemas import Artifact, BuildAccepted, JobStatus
 from api.services.jobs import ALLOWED_ARTIFACTS, WORKSPACE_ROOT, jobs
 from bladegen.curves.resolver import resolve_blade_spec
 from bladegen.models import BladeSpec
+from bladegen.runtime.manager import RuntimeReadinessError, require_runtime_ready
 
 router = APIRouter()
 EXAMPLES_ROOT = WORKSPACE_ROOT / "examples"
@@ -31,6 +32,19 @@ def _example_path(example_id: str) -> Path:
 @router.get("/health")
 def health() -> dict:
     return {"status": "ok", "service": "bladegen", "schema_version": "0.2"}
+
+
+@router.get("/runtime")
+def runtime_status() -> dict:
+    try:
+        identity = require_runtime_ready()
+    except RuntimeReadinessError as exc:
+        return {
+            "ready": False,
+            "error": str(exc),
+            "setup": "./scripts/setup_openvsp_fixed_plane.sh",
+        }
+    return {"ready": True, **identity.safe_dict()}
 
 
 @router.get("/examples")
@@ -70,7 +84,10 @@ def validate_spec(payload: dict) -> dict:
 @router.post("/build", response_model=BuildAccepted, status_code=202)
 def build(payload: dict) -> BuildAccepted:
     validate_spec(payload)
-    job = jobs.submit(payload)
+    try:
+        job = jobs.submit(payload)
+    except RuntimeReadinessError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     return BuildAccepted(
         job_id=job.job_id,
         build_type=job.build_type,
@@ -80,6 +97,9 @@ def build(payload: dict) -> BuildAccepted:
         progress_percent=0,
         message="Waiting for the CAD worker",
         elapsed_seconds=job.elapsed_seconds,
+        runtime_build_id=job.runtime_build_id,
+        construction_contract=job.runtime_contract,
+        runtime_fingerprint=job.runtime_fingerprint,
     )
 
 
@@ -97,6 +117,9 @@ def job_status(job_id: str) -> JobStatus:
         progress_percent=job.progress_percent,
         message=job.message,
         elapsed_seconds=job.elapsed_seconds,
+        runtime_build_id=job.runtime_build_id,
+        construction_contract=job.runtime_contract,
+        runtime_fingerprint=job.runtime_fingerprint,
         error=job.error,
     )
 

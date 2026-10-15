@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -12,6 +13,8 @@ from bladegen.adapters.openvsp_adapter import HIDDEN_ADAPTER_DEFAULTS, build_and
 from bladegen.curves.resolver import resolve_blade_spec
 from bladegen.models import BladeSpec
 from bladegen.progress import ProgressReporter, ProgressState
+from bladegen.runtime.manager import RuntimeReadinessError, require_runtime_ready
+from bladegen.runtime.provenance import begin_engine_manifest, record_completed_runtime
 from bladegen.solid.ocp_solidify import read_step, solidify_step, write_stl
 from bladegen.validation.geometry_validation import compare_steps, validate_openvsp_readback
 from bladegen.validation.measure_sections import measure_sections
@@ -172,12 +175,19 @@ def build(
     output_dir: Path,
     regression_reference_step: Path | None = None,
     progress_path: Path | None = None,
+    manifest_submitted: dict | None = None,
+    defer_engine_completion: bool = False,
 ) -> dict:
     progress = ProgressReporter(progress_path)
     progress.report(
         ProgressState("validation", "Validating BladeSpec", 0, "Checking the input contract")
     )
     spec = BladeSpec.from_json(spec_path)
+    submitted_definition = (
+        manifest_submitted
+        if manifest_submitted is not None
+        else json.loads(spec_path.read_text(encoding="utf-8"))
+    )
     progress.report(
         ProgressState(
             "resolution",
@@ -190,6 +200,26 @@ def build(
     output_dir.mkdir(parents=True, exist_ok=True)
     resolved_path = output_dir / "resolved_blade_spec.json"
     resolved_path.write_text(resolved.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    engine_manifest_path = output_dir / "engine_manifest.json"
+    try:
+        runtime_identity = require_runtime_ready(
+            expected_fingerprint=os.getenv("BLADEGEN_EXPECTED_RUNTIME_FINGERPRINT")
+        )
+    except RuntimeReadinessError as exc:
+        begin_engine_manifest(
+            engine_manifest_path,
+            submitted=submitted_definition,
+            resolved=resolved.model_dump(mode="json"),
+            identity=None,
+            readiness_error=str(exc),
+        )
+        raise
+    begin_engine_manifest(
+        engine_manifest_path,
+        submitted=submitted_definition,
+        resolved=resolved.model_dump(mode="json"),
+        identity=runtime_identity,
+    )
     progress.report(
         ProgressState(
             "openvsp",
@@ -198,7 +228,7 @@ def build(
             "OpenVSP is constructing and exporting the blade surfaces",
         )
     )
-    adapter = build_and_export(resolved, output_dir)
+    adapter = build_and_export(resolved, output_dir, engine_manifest_path)
     readback = validate_openvsp_readback(resolved, adapter.readback)
     if not readback["passed"]:
         raise RuntimeError(f"OpenVSP readback validation failed: {readback}")
@@ -261,7 +291,9 @@ def build(
             "blade_preview_stl": str(preview_path.resolve()),
             "blade_spec": str(spec_copy.resolve()),
             "resolved_blade_spec": str(resolved_path.resolve()),
+            "engine_manifest": str(engine_manifest_path.resolve()),
         },
+        "engine": adapter.engine_identity,
         "openvsp_readback": readback,
         "geometry_validation": geometry_validation,
         "airfoil_resolution": {
@@ -315,6 +347,8 @@ def build(
         )
         writer.writeheader()
         writer.writerows(rows)
+    if not defer_engine_completion:
+        record_completed_runtime(engine_manifest_path)
     progress.report(
         ProgressState(
             "confirmation",

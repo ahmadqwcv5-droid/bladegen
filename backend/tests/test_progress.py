@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -7,6 +8,22 @@ import pytest
 
 from api.services.jobs import Job, JobManager
 from bladegen.progress import ProgressReporter, ProgressState, read_progress
+
+
+def write_engine_manifest(job: Job) -> None:
+    (job.output_dir / "engine_manifest.json").write_text(
+        json.dumps(
+            {
+                "state": "COMPLETED",
+                "actually_loaded_runtime": {
+                    "fingerprint": job.runtime_fingerprint,
+                    "build_id": job.runtime_build_id,
+                    "construction_contract": job.runtime_contract,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
 
 
 def state(stage: str, percent: int) -> ProgressState:
@@ -60,6 +77,7 @@ def test_success_reaches_100_and_uses_isolated_cli(monkeypatch, tmp_path: Path) 
         ProgressReporter(output / "progress.json").report(state("complete", 100))
         for name in ("blade_solid.step", "blade_preview.stl", "validation.json"):
             (output / name).write_text("artifact", encoding="utf-8")
+        write_engine_manifest(job)
         return subprocess.CompletedProcess(command, 0, "ok", "")
 
     monkeypatch.setattr(subprocess, "run", run)

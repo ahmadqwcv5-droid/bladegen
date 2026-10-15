@@ -12,6 +12,9 @@ class ProgressResponse(BaseModel):
     message: str
     elapsed_seconds: float = Field(ge=0.0)
     error: str | None = None
+    runtime_build_id: str | None = None
+    construction_contract: str | None = None
+    runtime_fingerprint: str | None = None
 
 
 class BuildAccepted(ProgressResponse):

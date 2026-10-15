@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from bladegen.progress import PROGRESS_FILENAME, QUEUED_PROGRESS, read_progress
+from bladegen.runtime.manager import require_runtime_ready
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
 RUN_ROOT = WORKSPACE_ROOT / "output" / "runs"
@@ -32,6 +33,7 @@ ALLOWED_ARTIFACTS = {
     "propeller_preview.stl",
     "propeller_spec.json",
     "assembly_validation.csv",
+    "engine_manifest.json",
 }
 
 
@@ -48,6 +50,10 @@ class Job:
     output_dir: Path = field(default_factory=Path)
     submitted_at: float = field(default_factory=time.monotonic)
     completed_at: float | None = None
+    runtime_root: str = ""
+    runtime_fingerprint: str = ""
+    runtime_build_id: str = ""
+    runtime_contract: str = ""
 
     @property
     def elapsed_seconds(self) -> float:
@@ -66,17 +72,27 @@ class JobManager:
         self._jobs: dict[str, Job] = {}
         self._lock = threading.Lock()
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bladegen-build")
+        self._readiness_checker = require_runtime_ready
         self.run_root.mkdir(parents=True, exist_ok=True)
 
     def submit(self, spec: dict, build_type: str = "blade") -> Job:
         if build_type not in {"blade", "propeller"}:
             raise ValueError(f"Unsupported build type: {build_type}")
+        runtime = self._readiness_checker()
         job_id = uuid.uuid4().hex
         output_dir = self.run_root / job_id
         output_dir.mkdir(parents=False, exist_ok=False)
         input_path = output_dir / f"{build_type}_spec_input.json"
         input_path.write_text(json.dumps(spec, indent=2) + "\n", encoding="utf-8")
-        job = Job(job_id=job_id, build_type=build_type, output_dir=output_dir)
+        job = Job(
+            job_id=job_id,
+            build_type=build_type,
+            output_dir=output_dir,
+            runtime_root=str(runtime.root),
+            runtime_fingerprint=runtime.fingerprint,
+            runtime_build_id=runtime.build_id,
+            runtime_contract=runtime.construction_contract,
+        )
         with self._lock:
             self._jobs[job_id] = job
         self._executor.submit(self._run, job, input_path)
@@ -118,7 +134,9 @@ class JobManager:
             job.status = "running"
             job.stage = "validation"
             job.stage_label = (
-                "Validating PropellerSpec" if job.build_type == "propeller" else "Validating BladeSpec"
+                "Validating PropellerSpec"
+                if job.build_type == "propeller"
+                else "Validating BladeSpec"
             )
             job.message = "The CAD worker is checking the neutral input contract"
         command = [
@@ -133,10 +151,19 @@ class JobManager:
             str(job.output_dir / PROGRESS_FILENAME),
         ]
         try:
+            worker_env = os.environ.copy()
+            worker_env.update(
+                {
+                    "OPENVSP_ROOT": job.runtime_root,
+                    "BLADEGEN_EXPECTED_RUNTIME_FINGERPRINT": job.runtime_fingerprint,
+                    "BLADEGEN_JOB_ID": job.job_id,
+                    "BLADEGEN_RUN_ID": job.job_id,
+                }
+            )
             process = subprocess.run(
                 command,
                 cwd=WORKSPACE_ROOT,
-                env=os.environ.copy(),
+                env=worker_env,
                 capture_output=True,
                 text=True,
                 timeout=self.timeout_seconds,
@@ -155,13 +182,30 @@ class JobManager:
                     "blade_solid.step",
                     "blade_spec.json",
                     "validation.json",
+                    "engine_manifest.json",
                 )
                 if job.build_type == "propeller"
-                else ("blade_solid.step", "blade_preview.stl", "validation.json")
+                else (
+                    "blade_solid.step",
+                    "blade_preview.stl",
+                    "validation.json",
+                    "engine_manifest.json",
+                )
             )
             missing = [name for name in required if not (job.output_dir / name).is_file()]
             if missing:
                 raise RuntimeError(f"Build did not produce required artifacts: {missing}")
+            engine_manifest = json.loads(
+                (job.output_dir / "engine_manifest.json").read_text(encoding="utf-8")
+            )
+            actual = engine_manifest.get("actually_loaded_runtime") or {}
+            if (
+                engine_manifest.get("state") != "COMPLETED"
+                or actual.get("fingerprint") != job.runtime_fingerprint
+                or actual.get("build_id") != job.runtime_build_id
+                or actual.get("construction_contract") != job.runtime_contract
+            ):
+                raise RuntimeError("Build runtime provenance did not match the queued engine.")
         except subprocess.TimeoutExpired as exc:
             self._write_log(job.output_dir / "build_stdout.log", exc.stdout)
             self._write_log(job.output_dir / "build_stderr.log", exc.stderr)

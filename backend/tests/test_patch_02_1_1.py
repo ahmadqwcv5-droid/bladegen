@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -19,6 +20,22 @@ def _progress(stage: str, percent: int) -> ProgressState:
     return ProgressState(stage, stage.replace("_", " ").title(), percent, stage)
 
 
+def _write_engine_manifest(job: Job) -> None:
+    (job.output_dir / "engine_manifest.json").write_text(
+        json.dumps(
+            {
+                "state": "COMPLETED",
+                "actually_loaded_runtime": {
+                    "fingerprint": job.runtime_fingerprint,
+                    "build_id": job.runtime_build_id,
+                    "construction_contract": job.runtime_contract,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def _job(tmp_path: Path, character: str) -> tuple[JobManager, Job, Path]:
     manager = JobManager(run_root=tmp_path)
     output = tmp_path / (character * 32)
@@ -31,16 +48,14 @@ def _job(tmp_path: Path, character: str) -> tuple[JobManager, Job, Path]:
 def test_pydantic_and_fastapi_serialize_absent_override_as_null() -> None:
     model_payload = BladeSpec.from_json(EXAMPLE).model_dump(mode="json")
     assert all(
-        "thickness_override_ratio" in section
-        and section["thickness_override_ratio"] is None
+        "thickness_override_ratio" in section and section["thickness_override_ratio"] is None
         for section in model_payload["airfoil_sections"]
     )
 
     response = client.get("/api/examples/custom_multi_airfoil_finite_te")
     assert response.status_code == 200
     assert all(
-        "thickness_override_ratio" in section
-        and section["thickness_override_ratio"] is None
+        "thickness_override_ratio" in section and section["thickness_override_ratio"] is None
         for section in response.json()["airfoil_sections"]
     )
 
@@ -74,6 +89,7 @@ def test_manager_confirms_success_at_100(monkeypatch, tmp_path: Path) -> None:
         ProgressReporter(job.output_dir / "progress.json").report(_progress("confirmation", 95))
         for name in ("blade_solid.step", "blade_preview.stl", "validation.json"):
             (job.output_dir / name).write_text("artifact", encoding="utf-8")
+        _write_engine_manifest(job)
         return subprocess.CompletedProcess(command, 0, "ok", "")
 
     monkeypatch.setattr(subprocess, "run", run)

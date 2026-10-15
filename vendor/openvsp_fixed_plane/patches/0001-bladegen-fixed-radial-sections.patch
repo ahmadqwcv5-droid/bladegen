@@ -1,0 +1,122 @@
+diff --git a/SuperProject/CMakeLists.txt b/SuperProject/CMakeLists.txt
+--- a/SuperProject/CMakeLists.txt
++++ b/SuperProject/CMakeLists.txt
+@@ -2,6 +2,8 @@ CMAKE_MINIMUM_REQUIRED( VERSION 3.24 )
+ 
+ PROJECT( VSP_SUPER_PROJECT )
+ 
++OPTION( BLADEGEN_FIXED_RADIAL_SECTIONS "Build BladeGen fixed radial-section semantics" OFF )
++
+ set( CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH} )
+ 
+ INCLUDE( ExternalProject )
+@@ -64,6 +66,7 @@ ExternalProject_Add( OpenVSP
+ 		-DPYTHON_INCLUDE_PATH=${PYTHON_INCLUDE_PATH}
+ 		-DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+ 		-DVSP_INSTALL_API_TEST=${VSP_INSTALL_API_TEST}
++		-DBLADEGEN_FIXED_RADIAL_SECTIONS=${BLADEGEN_FIXED_RADIAL_SECTIONS}
+ 	INSTALL_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target install
+ 	DEPENDS Libraries
+ )
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -2,5 +2,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.24)
+ 
+ PROJECT (VSP)
+ 
++OPTION( BLADEGEN_FIXED_RADIAL_SECTIONS "Build BladeGen fixed radial-section semantics" OFF )
++
+ # Use this to see the command that CMake is using to build code
+ #SET(CMAKE_VERBOSE_MAKEFILE   ON  CACHE BOOL "" FORCE)
+@@ -77,6 +79,10 @@ IF( VSP_NO_GRAPHICS )
+ 	ADD_COMPILE_DEFINITIONS( VSP_NO_GRAPHICS )
+ ENDIF()
+ 
++IF( BLADEGEN_FIXED_RADIAL_SECTIONS )
++	ADD_COMPILE_DEFINITIONS( BLADEGEN_FIXED_RADIAL_SECTIONS )
++ENDIF()
++
+ ADD_SUBDIRECTORY( external )
+ 
+ IF( NOT VSP_NO_GRAPHICS )
+diff --git a/src/geom_api/VSP_Geom_API.cpp b/src/geom_api/VSP_Geom_API.cpp
+--- a/src/geom_api/VSP_Geom_API.cpp
++++ b/src/geom_api/VSP_Geom_API.cpp
+@@ -14550,6 +14550,33 @@ std::string GetVSPVersion()
+     return std::string( VSPVERSION4 );
+ }
+ 
++std::string GetBladeGenBuildID()
++{
++#ifdef BLADEGEN_FIXED_RADIAL_SECTIONS
++    return "openvsp-3.54.0-bladegen-fixed-plane.1";
++#else
++    return "openvsp-3.54.0-bladegen-patch-feature-off.1";
++#endif
++}
++
++std::string GetBladeGenConstructionContract()
++{
++#ifdef BLADEGEN_FIXED_RADIAL_SECTIONS
++    return "bladegen.fixed-radial-sections.v1";
++#else
++    return "openvsp.upstream-prop-positioning";
++#endif
++}
++
++bool HasBladeGenFixedRadialSectionsV1()
++{
++#ifdef BLADEGEN_FIXED_RADIAL_SECTIONS
++    return true;
++#else
++    return false;
++#endif
++}
++
+ int GetVSPVersionMajor()
+ {
+     return VSP_VERSION_MAJOR;
+diff --git a/src/geom_api/VSP_Geom_API.h b/src/geom_api/VSP_Geom_API.h
+--- a/src/geom_api/VSP_Geom_API.h
++++ b/src/geom_api/VSP_Geom_API.h
+@@ -768,6 +768,24 @@ extern double Deg2Rad( double d );
+ 
+ extern std::string GetVSPVersion();
+ 
++/*! \ingroup APIUtilities */
++/*! Return the project-defined identity compiled into a BladeGen OpenVSP flavor. */
++extern std::string GetBladeGenBuildID();
++
++/*! \ingroup APIUtilities */
++/*!
++    Return the construction contract compiled into this runtime. The fixed-plane
++    flavor returns bladegen.fixed-radial-sections.v1.
++*/
++extern std::string GetBladeGenConstructionContract();
++
++/*! \ingroup APIUtilities */
++/*!
++    Return true only when the compiled runtime applies identity at the native
++    automatic propeller rib-rotation operation.
++*/
++extern bool HasBladeGenFixedRadialSectionsV1();
++
+ /*!
+     \ingroup APIUtilities
+ */
+diff --git a/src/geom_core/PropGeom.cpp b/src/geom_core/PropGeom.cpp
+--- a/src/geom_core/PropGeom.cpp
++++ b/src/geom_core/PropGeom.cpp
+@@ -111,7 +111,11 @@ void PropPositioner::Update()
+ 
+     mat.translatef( m_Rake, 0, m_Reverse * m_Skew );
+ 
++#ifdef BLADEGEN_FIXED_RADIAL_SECTIONS
++    mat.rotateZ( 0.0 ); // BladeGen fixed-Y radial-section contract.
++#else
+     mat.rotateZ( m_ZRotate ); // About chord
++#endif
+ 
+     mat.translatef( 0, 0, m_Reverse * m_Chord * ( 0.5 - m_Construct ) );
+ 
