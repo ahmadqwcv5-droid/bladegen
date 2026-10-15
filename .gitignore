@@ -18,3 +18,11 @@ output/runs/*
 frontend/.vite/
 frontend/_metadata.json
 user_data/airfoils/
+
+# Local generated X-57 diagnostic payloads. Commit reports, JSON summaries,
+# Local generated X-57 evidence payload. Commit reports, fixtures, and scripts;
+# retain CAD, raw sampling tables, logs, and machine-readable run trees locally.
+docs/evidence/
+/SPRINT_04B_Independent_Review.zip
+/X57_Fixtures_For_Sprint04B.zip
+/docs/X57_04B_Closure_Independent_Checks.zip

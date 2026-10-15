@@ -462,9 +462,10 @@ export default function App() {
     candidate: BladeSpec,
     label: string,
     expectedSnapshot?: string,
+    signal?: AbortSignal,
   ): Promise<boolean> => {
     const before = specRef.current
-    if (!before || curveInteraction === 'validating') return false
+    if (!before || curveInteraction === 'validating' || signal?.aborted) return false
     const beforeSnapshot = canonicalJson(before)
     if (expectedSnapshot && beforeSnapshot !== expectedSnapshot) {
       setErrors(['The design changed after this review opened. Reopen the operation to review values against the current snapshot.'])
@@ -484,8 +485,8 @@ export default function App() {
     setErrors([])
     setMessage(`Validating ${label}…`)
     try {
-      await validateBackend(candidate)
-      if (curveValidationRevision.current !== token || !specRef.current || canonicalJson(specRef.current) !== beforeSnapshot) return false
+      await validateBackend(candidate, signal)
+      if (signal?.aborted || curveValidationRevision.current !== token || !specRef.current || canonicalJson(specRef.current) !== beforeSnapshot) return false
       curveHistory.current.push({ before, after: candidate, label })
       refreshHistory()
       markDraftModified()
@@ -494,7 +495,7 @@ export default function App() {
       setMessage(`${label} committed; canonical preview updating`)
       return true
     } catch (error) {
-      if (curveValidationRevision.current !== token) return false
+      if (signal?.aborted || curveValidationRevision.current !== token) return false
       const detail = error instanceof Error ? error.message : String(error)
       setErrors([`Curve edit rejected by backend: ${detail}`])
       setMessage(`Curve edit rejected: ${detail}`)

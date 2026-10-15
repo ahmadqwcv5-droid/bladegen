@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { BladeSpec } from '../types/bladespec'
 import { CURVES } from '../editor/curveEditing'
 import { canonicalJson } from '../editor/bladespecEditor'
@@ -16,18 +16,24 @@ import {
 
 type Props = {
   snapshot: BladeSpec
-  onApply: (candidate: BladeSpec, label: string, expectedSnapshot: string) => Promise<boolean>
+  onApply: (candidate: BladeSpec, label: string, expectedSnapshot: string, signal: AbortSignal) => Promise<boolean>
   onCancel: () => void
 }
 
 export function DistributionImportDialog({ snapshot, onApply, onCancel }: Props) {
   const expectedSnapshot = useRef(canonicalJson(snapshot)).current
+  const transaction = useRef<AbortController | undefined>(undefined)
   const [paste, setPaste] = useState('')
   const [table, setTable] = useState<DelimitedTable>()
   const [plan, setPlan] = useState<DistributionImportPlan>()
   const [parseDurationMs, setParseDurationMs] = useState<number>()
   const [error, setError] = useState('')
   const [applying, setApplying] = useState(false)
+  useEffect(() => () => transaction.current?.abort(), [])
+  const cancel = () => {
+    transaction.current?.abort()
+    onCancel()
+  }
 
   const review = (text: string, sourceName: string) => {
     const started = performance.now()
@@ -67,6 +73,8 @@ export function DistributionImportDialog({ snapshot, onApply, onCancel }: Props)
   }
   const apply = async () => {
     if (!candidate.value) return
+    const controller = new AbortController()
+    transaction.current = controller
     setApplying(true)
     setError('')
     try {
@@ -74,16 +82,21 @@ export function DistributionImportDialog({ snapshot, onApply, onCancel }: Props)
         candidate.value.spec,
         `Import ${candidate.value.summaries.map(summary => summary.title).join('/')} distributions`,
         expectedSnapshot,
+        controller.signal,
       )
+      if (controller.signal.aborted) return
       if (accepted) onCancel()
       else setError('The import was not committed; review current validation messages.')
-    } finally { setApplying(false) }
+    } finally {
+      if (transaction.current === controller) transaction.current = undefined
+      if (!controller.signal.aborted) setApplying(false)
+    }
   }
   const unknown = table && plan ? unmappedColumns(table, plan) : []
 
   return <div className="selector-backdrop" role="dialog" aria-modal="true" aria-label="Import Distributions">
     <section className="bulk-dialog">
-      <div className="section-title"><div><p className="eyebrow">ENGINEERING TRANSACTION</p><h2>Import Distributions</h2></div><button onClick={onCancel}>Cancel</button></div>
+      <div className="section-title"><div><p className="eyebrow">ENGINEERING TRANSACTION</p><h2>Import Distributions</h2></div><button onClick={cancel}>Cancel</button></div>
       <p>Paste spreadsheet cells or choose a UTF-8 CSV. Review mappings, units, interpolation, and point counts before replacing only the selected distributions.</p>
       <div className="bulk-source-grid">
         <label>CSV file<input aria-label="Distribution CSV file" type="file" accept=".csv,text/csv,text/plain" onChange={event => {
@@ -114,7 +127,7 @@ export function DistributionImportDialog({ snapshot, onApply, onCancel }: Props)
           <p>Diameter snapshot: {snapshot.diameter_mm} mm · radial domain {candidate.value.radialDomain[0]} to {candidate.value.radialDomain[1]} · airfoil stations remain {snapshot.airfoil_sections.length} · Thickness {candidate.value.summaries.some(summary => summary.curve === 'thickness') ? 'selected' : 'unchanged'}.</p>
           <ul>{candidate.value.summaries.map(summary => <li key={summary.curve}><strong>{summary.title}</strong>: {summary.column} ({summary.unit}), {summary.interpolation.toUpperCase()}, {summary.oldPointCount} → {summary.newPointCount} points</li>)}</ul>
           <div className="candidate-preview"><table><thead><tr>{table.headers.map(header => <th key={header}>{header}</th>)}</tr></thead><tbody>{table.rows.slice(0, 10).map(row => <tr key={row.sourceRow}>{table.headers.map(header => <td key={header}>{row.cells[header]}</td>)}</tr>)}</tbody></table>{table.rows.length > 10 && <p>Previewing 10 of {table.rows.length} rows; all rows will be validated.</p>}</div>
-          <div className="dialog-actions"><button onClick={onCancel}>Cancel</button><button className="primary" disabled={applying} onClick={() => void apply()}>{applying ? 'Validating candidate…' : 'Apply Once'}</button></div>
+          <div className="dialog-actions"><button onClick={cancel}>Cancel</button><button className="primary" disabled={applying} onClick={() => void apply()}>{applying ? 'Validating candidate…' : 'Apply Once'}</button></div>
         </div>}
       </>}
     </section>

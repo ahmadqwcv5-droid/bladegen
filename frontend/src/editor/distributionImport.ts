@@ -45,23 +45,42 @@ export type DistributionImportCandidate = {
   radialDomain: [number, number]
 }
 
-const parseCsvLine = (line: string): string[] => {
+const DECIMAL_NUMBER = /^[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?$/
+
+const parseCsvLine = (line: string, sourceRow: number): string[] => {
   const values: string[] = []
   let value = ''
   let quoted = false
+  let quoteClosed = false
   for (let index = 0; index < line.length; index += 1) {
     const character = line[index]
     if (quoted) {
       if (character === '"' && line[index + 1] === '"') {
         value += '"'
         index += 1
-      } else if (character === '"') quoted = false
+      } else if (character === '"') {
+        quoted = false
+        quoteClosed = true
+      }
       else value += character
-    } else if (character === '"') quoted = true
-    else if (character === ',') { values.push(value); value = '' }
+    } else if (quoteClosed) {
+      if (character !== ',') {
+        throw new Error(`Row ${sourceRow}, column ${values.length + 1}: unexpected character after closing quote`)
+      }
+      values.push(value)
+      value = ''
+      quoteClosed = false
+    } else if (character === '"') {
+      if (value.length) {
+        throw new Error(`Row ${sourceRow}, column ${values.length + 1}: quote inside an unquoted field`)
+      }
+      quoted = true
+    } else if (character === ',') { values.push(value); value = '' }
     else value += character
   }
-  if (quoted) throw new Error('CSV contains an unterminated quoted field')
+  if (quoted) {
+    throw new Error(`Row ${sourceRow}, column ${values.length + 1}: unterminated quoted field`)
+  }
   values.push(value)
   return values
 }
@@ -71,8 +90,10 @@ export function parseDelimitedTable(text: string, sourceName = 'Pasted spreadshe
   const lines = normalized.split('\n').filter(line => line.trim() !== '')
   if (lines.length < 2) throw new Error('Bulk input requires a header and at least one data row')
   const delimiter: ',' | '\t' = lines[0].includes('\t') ? '\t' : ','
-  const split = delimiter === '\t' ? (line: string) => line.split('\t') : parseCsvLine
-  const headers = split(lines[0]).map(header => header.trim())
+  const split = delimiter === '\t'
+    ? (line: string, _sourceRow: number) => line.split('\t')
+    : parseCsvLine
+  const headers = split(lines[0], 1).map(header => header.trim())
   if (headers.some(header => !header)) throw new Error('Every bulk-input column requires a header')
   if (new Set(headers).size !== headers.length) throw new Error('Bulk-input headers must be unique')
   const dataLines = lines.slice(1)
@@ -80,7 +101,7 @@ export function parseDelimitedTable(text: string, sourceName = 'Pasted spreadshe
     throw new Error(`Bulk input exceeds the ${MAX_BULK_ROWS}-row safety limit`)
   }
   const rows = dataLines.map((line, index) => {
-    const values = split(line)
+    const values = split(line, index + 2)
     if (values.length !== headers.length) {
       throw new Error(
         `Row ${index + 2} has ${values.length} cells; expected ${headers.length}`,
@@ -135,6 +156,9 @@ const parseFiniteCell = (row: DelimitedRow, column: string): number => {
   const raw = row.cells[column]
   if (raw === undefined || raw === '') {
     throw new Error(`Row ${row.sourceRow}, column ${column}: a value is required`)
+  }
+  if (!DECIMAL_NUMBER.test(raw)) {
+    throw new Error(`Row ${row.sourceRow}, column ${column}: ${JSON.stringify(raw)} is not a decimal or scientific-notation number`)
   }
   const value = Number(raw)
   if (!Number.isFinite(value)) {

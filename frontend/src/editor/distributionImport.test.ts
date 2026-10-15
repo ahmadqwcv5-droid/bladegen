@@ -29,6 +29,29 @@ describe('Sprint 04B distribution import', () => {
     expect(tsv.delimiter).toBe('\t')
   })
 
+  it('accepts valid quoted numeric fields and rejects malformed quote placement', () => {
+    const spec = source()
+    const valid = parseDelimitedTable('r_over_R,chord_mm\n".2","64"\n"1","30"')
+    const candidate = buildDistributionCandidate(spec, valid, suggestedImportPlan(valid, spec))
+    expect(candidate.spec.chord_distribution.points[0].chord_over_R).toBe(64 / 200)
+    expect(() => parseDelimitedTable('r_over_R,chord_mm\n.2,6"4"\n1,30')).toThrow(
+      /Row 2, column 2: quote inside an unquoted field/,
+    )
+    expect(() => parseDelimitedTable('r_over_R,chord_mm\n.2,"64"x\n1,30')).toThrow(
+      /Row 2, column 2: unexpected character after closing quote/,
+    )
+  })
+
+  it('accepts decimal/scientific numbers but rejects JavaScript-only numeric syntax', () => {
+    const spec = source()
+    const scientific = parseDelimitedTable('r_over_R,chord_mm\n2e-1,+6.4e1\n1,30.')
+    expect(buildDistributionCandidate(spec, scientific, suggestedImportPlan(scientific, spec))
+      .spec.chord_distribution.points[0].chord_over_R).toBe(64 / 200)
+    const hexadecimal = parseDelimitedTable('r_over_R,chord_mm\n.2,0x40\n1,30')
+    expect(() => buildDistributionCandidate(spec, hexadecimal, suggestedImportPlan(hexadecimal, spec)))
+      .toThrow(/not a decimal or scientific-notation number/)
+  })
+
   it('replaces four selected distributions once while preserving stations and thickness', () => {
     const spec = source()
     const table = parseDelimitedTable(x57Style(), 'fixture.csv')
@@ -95,7 +118,7 @@ describe('Sprint 04B distribution import', () => {
   it.each([
     ['duplicate', 'r_over_R,chord_mm\n.2,80\n.2,70\n1,30', /duplicate/],
     ['missing', 'r_over_R,chord_mm\n.2,80\n1,', /value is required/],
-    ['nonfinite', 'r_over_R,chord_mm\n.2,80\n1,NaN', /not finite/],
+    ['nonfinite', 'r_over_R,chord_mm\n.2,80\n1,NaN', /not a decimal or scientific-notation number/],
     ['root mismatch', 'r_over_R,chord_mm\n.21,80\n1,30', /does not match project root/],
     ['tip mismatch', 'r_over_R,chord_mm\n.2,80\n.99,30', /does not match required project tip/],
   ])('rejects %s input atomically', (_name, text, pattern) => {
