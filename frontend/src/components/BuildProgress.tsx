@@ -46,6 +46,8 @@ export function BuildProgress({ job }: { job?: Job }) {
       <dl>
         <dt>Status</dt><dd>{job.status}</dd>
         <dt>Elapsed</dt><dd>{formatElapsed(job.elapsed_seconds)}</dd>
+        <dt>Queue wait</dt><dd>{formatElapsed(job.queue_wait_seconds ?? 0)}</dd>
+        <dt>Worker elapsed</dt><dd>{formatElapsed(job.worker_elapsed_seconds ?? 0)}</dd>
         <dt>Current operation</dt><dd>{job.message}</dd>
       </dl>
       {job.status === 'running' && <span className="activity" aria-label="Build stage active" />}

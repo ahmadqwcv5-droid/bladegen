@@ -81,6 +81,7 @@ def test_success_reaches_100_and_uses_isolated_cli(monkeypatch, tmp_path: Path) 
         return subprocess.CompletedProcess(command, 0, "ok", "")
 
     monkeypatch.setattr(subprocess, "run", run)
+    monkeypatch.setattr("api.services.jobs.verify_completed_result", lambda *args: None)
     manager._run(job, input_path)
     assert job.status == "succeeded"
     assert job.progress_percent == 100

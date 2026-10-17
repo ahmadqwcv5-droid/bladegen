@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.interpolate import PchipInterpolator
 
-from bladegen.models import BladeSpec
+from bladegen.models import BladeSpec, RotationDirection
 
 
 @dataclass(frozen=True)
@@ -19,6 +19,7 @@ class SectionState:
     rake_mm: float
     skew_mm: float
     thickness_ratio: float
+    rotation_direction: RotationDirection
 
 
 def evaluate_distribution(distribution, field: str, station: float) -> float:
@@ -40,6 +41,7 @@ def evaluate_state(spec: BladeSpec, station: float) -> SectionState:
         thickness_ratio=evaluate_distribution(
             spec.thickness_distribution, "thickness_ratio", station
         ),
+        rotation_direction=spec.rotation_direction,
     )
 
 
@@ -118,10 +120,37 @@ def _arc_resample(points: np.ndarray, grid: np.ndarray) -> np.ndarray:
     )
 
 
+def _surface_envelope_y(points: np.ndarray, query_x: np.ndarray, *, upper: bool) -> np.ndarray:
+    buckets: dict[float, list[float]] = {}
+    for x_value, y_value in points:
+        buckets.setdefault(float(x_value), []).append(float(y_value))
+    x_values = np.asarray(sorted(buckets), dtype=float)
+    reducer = max if upper else min
+    y_values = np.asarray([reducer(buckets[x]) for x in x_values], dtype=float)
+    return np.interp(query_x, x_values, y_values)
+
+
+def _scale_half_thickness(
+    upper: np.ndarray, lower: np.ndarray, scale: float
+) -> tuple[np.ndarray, np.ndarray]:
+    """Apply OpenVSP's post-profile-blend thickness scale about the camber line."""
+    if math.isclose(scale, 1.0, rel_tol=0.0, abs_tol=1e-14):
+        return upper, lower
+    corrected_upper = upper.copy()
+    corrected_lower = lower.copy()
+    lower_at_upper = _surface_envelope_y(lower, upper[:, 0], upper=False)
+    upper_at_lower = _surface_envelope_y(upper, lower[:, 0], upper=True)
+    upper_camber = 0.5 * (upper[:, 1] + lower_at_upper)
+    lower_camber = 0.5 * (lower[:, 1] + upper_at_lower)
+    corrected_upper[:, 1] = upper_camber + scale * (upper[:, 1] - upper_camber)
+    corrected_lower[:, 1] = lower_camber + scale * (lower[:, 1] - lower_camber)
+    return corrected_upper, corrected_lower
+
+
 def diagnostic_profile(
     spec: BladeSpec, station: float, samples_per_surface: int = 2001
 ) -> tuple[np.ndarray, np.ndarray, float, float]:
-    """Arc-length reparameterized, linearly interpolated profile at a station."""
+    """Interpolate station profiles, then apply the independent Thickness curve."""
     sections = spec.airfoil_sections
     if station <= sections[0].r_over_R:
         left = right = sections[0]
@@ -148,7 +177,16 @@ def diagnostic_profile(
         a = _arc_resample(left_surface, grid)
         b = _arc_resample(right_surface, grid)
         blended.append((1.0 - fraction) * a + fraction * b)
-    return blended[0], blended[1], left.r_over_R, right.r_over_R
+    left_ratio = evaluate_distribution(
+        spec.thickness_distribution, "thickness_ratio", left.r_over_R
+    )
+    right_ratio = evaluate_distribution(
+        spec.thickness_distribution, "thickness_ratio", right.r_over_R
+    )
+    profile_ratio = (1.0 - fraction) * left_ratio + fraction * right_ratio
+    target_ratio = evaluate_distribution(spec.thickness_distribution, "thickness_ratio", station)
+    upper, lower = _scale_half_thickness(blended[0], blended[1], target_ratio / profile_ratio)
+    return upper, lower, left.r_over_R, right.r_over_R
 
 
 def section_transform(state: SectionState) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -161,6 +199,11 @@ def section_transform(state: SectionState) -> tuple[np.ndarray, np.ndarray, np.n
             -state.rake_mm * math.sin(theta) + state.skew_mm * math.cos(theta),
         ]
     )
+    if state.rotation_direction is RotationDirection.REVERSE:
+        reflection = np.array([1.0, -1.0])
+        reference_axis *= reflection
+        chord_direction *= reflection
+        normal_direction *= reflection
     return reference_axis, chord_direction, normal_direction
 
 

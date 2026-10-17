@@ -1,0 +1,69 @@
+source	destination	classification	reason
+sprint01.md	docs/sprints/01/sprint01.md	historical_prompt	Chronological Sprint 01 family
+docs/SPRINT_01_REPORT.md	docs/sprints/01/SPRINT_01_REPORT.md	historical_report	Chronological Sprint 01 family
+docs/MIGRATION_REPORT.md	docs/sprints/01/MIGRATION_REPORT.md	historical_report	Original Sprint 01 repository migration
+sprint02.md	docs/sprints/02/sprint02.md	historical_prompt	Chronological Sprint 02 family
+docs/SPRINT_02_REPORT.md	docs/sprints/02/SPRINT_02_REPORT.md	historical_report	Chronological Sprint 02 family
+docs/SPRINT_02_ACCEPTANCE_MATRIX.md	docs/sprints/02/SPRINT_02_ACCEPTANCE_MATRIX.md	historical_matrix	Chronological Sprint 02 family
+sprint02_1.md	docs/sprints/02.1/sprint02_1.md	historical_prompt	Chronological Sprint 02.1 family
+docs/SPRINT_02_1_REPORT.md	docs/sprints/02.1/SPRINT_02_1_REPORT.md	historical_report	Chronological Sprint 02.1 family
+sprint2_1_1.md	docs/sprints/02.1.1/sprint2_1_1.md	historical_prompt	Chronological Patch 02.1.1 family
+docs/PATCH_02_1_1_REPORT.md	docs/sprints/02.1.1/PATCH_02_1_1_REPORT.md	historical_report	Chronological Patch 02.1.1 family
+sprint_03A.md	docs/sprints/03A/sprint_03A.md	historical_prompt	Chronological Sprint 03A family
+docs/SPRINT_03A_REPORT.md	docs/sprints/03A/SPRINT_03A_REPORT.md	historical_report	Chronological Sprint 03A family
+docs/SPRINT_03A_ACCEPTANCE_MATRIX.md	docs/sprints/03A/SPRINT_03A_ACCEPTANCE_MATRIX.md	historical_matrix	Chronological Sprint 03A family
+sprint_03A_1.md	docs/sprints/03A.1/sprint_03A_1.md	historical_prompt	Chronological Patch 03A.1 family
+docs/PATCH_03A_1_REPORT.md	docs/sprints/03A.1/PATCH_03A_1_REPORT.md	historical_report	Chronological Patch 03A.1 family
+sprint_03B.md	docs/sprints/03B/sprint_03B.md	historical_prompt	Chronological Sprint 03B family
+docs/SPRINT_03B_REPORT.md	docs/sprints/03B/SPRINT_03B_REPORT.md	historical_report	Chronological Sprint 03B family
+docs/SPRINT_03B_ACCEPTANCE_MATRIX.md	docs/sprints/03B/SPRINT_03B_ACCEPTANCE_MATRIX.md	historical_matrix	Chronological Sprint 03B family
+sprint_03B_1.md	docs/sprints/03B.1/sprint_03B_1.md	historical_prompt	Chronological Patch 03B.1 family
+docs/PATCH_03B_1_REPORT.md	docs/sprints/03B.1/PATCH_03B_1_REPORT.md	historical_report	Chronological Patch 03B.1 family
+sprint_03C.md	docs/sprints/03C/sprint_03C.md	historical_prompt	Chronological Sprint 03C family
+docs/SPRINT_03C_REPORT.md	docs/sprints/03C/SPRINT_03C_REPORT.md	historical_report	Chronological Sprint 03C family
+docs/SPRINT_03C_ACCEPTANCE_MATRIX.md	docs/sprints/03C/SPRINT_03C_ACCEPTANCE_MATRIX.md	historical_matrix	Chronological Sprint 03C family
+sprint_03C_1.md	docs/sprints/03C.1/sprint_03C_1.md	historical_prompt	Chronological Patch 03C.1 family
+docs/PATCH_03C_1_REPORT.md	docs/sprints/03C.1/PATCH_03C_1_REPORT.md	historical_report	Chronological Patch 03C.1 family
+sprint_04A.md	docs/sprints/04A/sprint_04A.md	historical_prompt	Chronological Sprint 04A family
+docs/SPRINT_04A_REPORT.md	docs/sprints/04A/SPRINT_04A_REPORT.md	historical_report	Chronological Sprint 04A family
+docs/SPRINT_04A_ACCEPTANCE_MATRIX.md	docs/sprints/04A/SPRINT_04A_ACCEPTANCE_MATRIX.md	historical_matrix	Chronological Sprint 04A family
+sprint_04A_01.md	docs/sprints/04A.1/sprint_04A_01.md	historical_prompt	Chronological Patch 04A.1 family
+docs/PATCH_04A_1_REPORT.md	docs/sprints/04A.1/PATCH_04A_1_REPORT.md	historical_report	Chronological Patch 04A.1 family
+docs/PATCH_04A_1_ACCEPTANCE_MATRIX.md	docs/sprints/04A.1/PATCH_04A_1_ACCEPTANCE_MATRIX.md	historical_matrix	Chronological Patch 04A.1 family
+sprint_04A_02.md	docs/sprints/04A.2/sprint_04A_02.md	historical_prompt	Chronological Patch 04A.2 family
+docs/PATCH_04A_2_REPORT.md	docs/sprints/04A.2/PATCH_04A_2_REPORT.md	historical_report	Chronological Patch 04A.2 family
+docs/PATCH_04A_2_ACCEPTANCE_MATRIX.md	docs/sprints/04A.2/PATCH_04A_2_ACCEPTANCE_MATRIX.md	historical_matrix	Chronological Patch 04A.2 family
+SPRINT_04B_EFFICIENT_ENGINEERING_INPUT.md	docs/sprints/04B/SPRINT_04B_EFFICIENT_ENGINEERING_INPUT.md	historical_prompt	Chronological Sprint 04B family
+docs/SPRINT_04B_REPORT.md	docs/sprints/04B/SPRINT_04B_REPORT.md	historical_report	Chronological Sprint 04B family
+docs/SPRINT_04B_ACCEPTANCE_MATRIX.md	docs/sprints/04B/SPRINT_04B_ACCEPTANCE_MATRIX.md	historical_matrix	Chronological Sprint 04B family
+docs/SPRINT_04B_PERFORMANCE.md	docs/sprints/04B/SPRINT_04B_PERFORMANCE.md	historical_report	Chronological Sprint 04B family
+AUDIT_REPORT.md	docs/sprints/04B/AUDIT_REPORT.md	historical_review	Independent Sprint 04B audit
+SPRINT_04B_Independent_Review.zip	docs/sprints/04B/SPRINT_04B_Independent_Review.zip	immutable_bundle	Preserve review ZIP bytes
+docs/X57_04B_Closure_Independent_Checks.zip	docs/sprints/04B/X57_04B_Closure_Independent_Checks.zip	immutable_bundle	Preserve review ZIP bytes
+X57_Fixtures_For_Sprint04B.zip	fixtures/x57_manual_reference/X57_Fixtures_For_Sprint04B.zip	immutable_bundle	Keep source fixture beside extracted input
+X57_CONTOUR_ISOLATION_PROMPT.md	docs/sprints/X57-CONTOUR/X57_CONTOUR_ISOLATION_PROMPT.md	historical_prompt	X-57 contour diagnostic family
+X57_ROOT_CAP_AB_PROMPT.md	docs/sprints/X57-ROOT-CAP-AB/X57_ROOT_CAP_AB_PROMPT.md	historical_prompt	X-57 cap diagnostic family
+X57_SURFACE_TO_STEP_DECISION_PROMPT.md	docs/sprints/X57-SURFACE-STEP/X57_SURFACE_TO_STEP_DECISION_PROMPT.md	historical_prompt	X-57 surface-to-STEP diagnostic family
+X57_RIB_PLACEMENT_AND_LOFT_PROMPT.md	docs/sprints/X57-RIB-LOFT/X57_RIB_PLACEMENT_AND_LOFT_PROMPT.md	historical_prompt	X-57 rib/loft diagnostic family
+X57_AB02_AUTO_RIB_ROTATION_ABLATION_PROMPT.md	docs/sprints/X57-AB02/X57_AB02_AUTO_RIB_ROTATION_ABLATION_PROMPT.md	historical_prompt	X-57 auto-rotation ablation family
+FP01_MANAGED_FIXED_PLANE_RUNTIME_INTEGRATION.md	docs/sprints/FP01/FP01_MANAGED_FIXED_PLANE_RUNTIME_INTEGRATION.md	historical_prompt	Managed fixed-plane integration family
+docs/FP01_INTEGRATION_REPORT.md	docs/sprints/FP01/FP01_INTEGRATION_REPORT.md	historical_report	Managed fixed-plane integration family
+docs/FP01_ACCEPTANCE_MATRIX.md	docs/sprints/FP01/FP01_ACCEPTANCE_MATRIX.md	historical_matrix	Managed fixed-plane integration family
+docs/FP01_SOURCE_SHA256.txt	docs/sprints/FP01/FP01_SOURCE_SHA256.txt	historical_hashes	Keep recorded source hashes beside FP01 report
+FP02_LEVEL1_OPERATIONAL_QUALIFICATION_AND_USER_HANDOFF.md	docs/sprints/FP02/FP02_LEVEL1_OPERATIONAL_QUALIFICATION_AND_USER_HANDOFF.md	historical_prompt	FP02 qualification family
+docs/FP02_PLAN.md	docs/sprints/FP02/FP02_PLAN.md	historical_plan	Frozen original FP02 plan
+docs/FP02_REPORT.md	docs/sprints/FP02/FP02_REPORT.md	historical_report	Preserve blocked original FP02 result
+docs/FP02_ACCEPTANCE_MATRIX.md	docs/sprints/FP02/FP02_ACCEPTANCE_MATRIX.md	historical_matrix	Preserve original 5/2/1 matrix
+FP02_C1_CLOSE_Q02_Q04_AND_COMPLETE_QUALIFICATION.md	docs/sprints/FP02-C1/FP02_C1_CLOSE_Q02_Q04_AND_COMPLETE_QUALIFICATION.md	historical_prompt	FP02-C1 corrective family
+docs/FP02_C1_REPORT.md	docs/sprints/FP02-C1/FP02_C1_REPORT.md	historical_report	Preserve later FP02-C1 qualification
+docs/FP02_C1_ACCEPTANCE_MATRIX.md	docs/sprints/FP02-C1/FP02_C1_ACCEPTANCE_MATRIX.md	historical_matrix	Preserve later 8/8 matrix
+L1A_01_REPOSITORY_CLEANUP_HANDOFF.zip	docs/sprints/L1A-01/L1A_01_REPOSITORY_CLEANUP_HANDOFF.zip	immutable_bundle	Preserve original L1A handoff ZIP bytes
+docs/AIRFOIL_LIBRARY.md	docs/user/AIRFOIL_LIBRARY.md	current_user_guide	Collect maintained user guidance
+docs/AIRFOIL_IMPORT_FORMATS.md	docs/user/AIRFOIL_IMPORT_FORMATS.md	current_user_guide	Collect maintained user guidance
+docs/BULK_INPUT_FORMATS.md	docs/user/BULK_INPUT_FORMATS.md	current_user_guide	Collect maintained user guidance
+docs/LEVEL1_USER_TRIAL_AR.md	docs/user/LEVEL1_USER_TRIAL_AR.md	current_user_guide	Collect maintained user guidance
+docs/ARCHITECTURE.md	docs/developer/ARCHITECTURE.md	current_developer_guide	Collect maintained engineering guidance
+docs/GEOMETRY_CONVENTIONS.md	docs/developer/GEOMETRY_CONVENTIONS.md	current_developer_guide	Collect maintained engineering guidance
+docs/VALIDATION_POLICY.md	docs/developer/VALIDATION_POLICY.md	current_developer_guide	Collect maintained engineering guidance
+docs/FIXED_PLANE_RUNTIME.md	docs/developer/FIXED_PLANE_RUNTIME.md	current_developer_guide	Collect maintained runtime guidance
+docs/PROPELLER_ASSEMBLY_CONVENTIONS.md	docs/developer/PROPELLER_ASSEMBLY_CONVENTIONS.md	current_developer_guide	Collect maintained assembly guidance

@@ -177,7 +177,7 @@ describe('Sprint 03B station identity and comparison', () => {
     await screen.findByText('Airfoil Stations (3)')
     expect(screen.getByText(/Inspecting Station 1 · r\/R 0.2000/)).toBeInTheDocument()
     await user.click(screen.getAllByRole('button', { name: 'Inspect' })[1])
-    expect(screen.getByText(/r\/R 0.6000/)).toBeInTheDocument()
+    expect(screen.getByText(/Inspecting Station 2 · r\/R 0.6000/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Load Example' }))
     await screen.findByText('Airfoil Stations (5)')
     expect(screen.getByText(/Inspecting Station 1 · r\/R 0.2000/)).toBeInTheDocument()

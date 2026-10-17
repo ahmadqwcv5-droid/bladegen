@@ -103,10 +103,12 @@ describe('Sprint 02 editor', () => {
   })
 
   it('synchronizes a root edit across stations and independent curves', async () => {
+    const user = userEvent.setup()
     await loaded()
     const root = screen.getByLabelText('Root radius')
-    fireEvent.change(root, { target: { value: '0.18' } })
-    fireEvent.blur(root)
+    await user.clear(root)
+    await user.type(root, '0.18')
+    await user.tab()
     await waitFor(() => expect(screen.getByLabelText('Airfoil radius 1')).toHaveValue(0.18))
     expect(screen.getByLabelText('Chord radius 1')).toHaveValue(0.18)
     expect(screen.getByLabelText('Twist radius 1')).toHaveValue(0.18)

@@ -136,6 +136,8 @@ def test_api_normalizes_omitted_azimuth_for_job_submission(monkeypatch):
         job_id = "a" * 32
         build_type = "propeller"
         elapsed_seconds = 0.0
+        queue_wait_seconds = 0.0
+        worker_elapsed_seconds = 0.0
         runtime_build_id = "openvsp-3.54.0-bladegen-fixed-plane.1"
         runtime_contract = "bladegen.fixed-radial-sections.v1"
         runtime_fingerprint = "f" * 64

@@ -14,7 +14,11 @@ from bladegen.curves.resolver import resolve_blade_spec
 from bladegen.models import BladeSpec
 from bladegen.progress import ProgressReporter, ProgressState
 from bladegen.runtime.manager import RuntimeReadinessError, require_runtime_ready
-from bladegen.runtime.provenance import begin_engine_manifest, record_completed_runtime
+from bladegen.runtime.provenance import (
+    begin_engine_manifest,
+    completion_context,
+    record_completed_runtime,
+)
 from bladegen.solid.ocp_solidify import read_step, solidify_step, write_stl
 from bladegen.validation.geometry_validation import compare_steps, validate_openvsp_readback
 from bladegen.validation.measure_sections import measure_sections
@@ -176,6 +180,7 @@ def build(
     regression_reference_step: Path | None = None,
     progress_path: Path | None = None,
     manifest_submitted: dict | None = None,
+    manifest_build_type: str = "blade",
     defer_engine_completion: bool = False,
 ) -> dict:
     progress = ProgressReporter(progress_path)
@@ -211,6 +216,7 @@ def build(
             submitted=submitted_definition,
             resolved=resolved.model_dump(mode="json"),
             identity=None,
+            build_type=manifest_build_type,
             readiness_error=str(exc),
         )
         raise
@@ -219,6 +225,7 @@ def build(
         submitted=submitted_definition,
         resolved=resolved.model_dump(mode="json"),
         identity=runtime_identity,
+        build_type=manifest_build_type,
     )
     progress.report(
         ProgressState(
@@ -278,6 +285,7 @@ def build(
     )
     result = {
         "status": "PASS",
+        "build_type": "blade",
         "bladespec": {
             "schema_version": spec.schema_version,
             "path": str(spec_path.resolve()),
@@ -327,6 +335,17 @@ def build(
         },
         "hidden_openvsp_adapter_defaults": HIDDEN_ADAPTER_DEFAULTS,
         "solidification": solidification,
+        "completion_context": completion_context(
+            submitted=(
+                submitted_definition
+                if manifest_build_type == "blade"
+                else submitted_definition["blade_spec"]
+            ),
+            build_type="blade",
+            identity=runtime_identity,
+            planned_section_count=geometry_validation["station_count"],
+            completed_section_count=len(geometry_validation["stations"]),
+        ),
     }
     if regression_reference_step:
         regression = compare_steps(regression_reference_step, solid_path)

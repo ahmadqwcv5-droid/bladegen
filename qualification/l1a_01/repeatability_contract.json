@@ -1,0 +1,34 @@
+{
+  "schema": "bladegen.l1a-01-repeatability-contract.v1",
+  "frozen_before_post_cleanup_build": true,
+  "reference_job_id": "3970dc6383f1425b9726d5a9a00f4202",
+  "reference_raw_bladespec_sha256": "3e63667eb208cfa1a2f60c8eec43ad4d0900ace0a351d2dc9a2c6cfffa81252a",
+  "reference_step_sha256": "1aefd53802607d7b91bd105c814a61e13f3b97641e28991c52c67e2f0648a5b8",
+  "required": {
+    "fresh_job_id": true,
+    "exact_raw_input_sha256": true,
+    "canonical_and_normalized_input_identity": true,
+    "same_managed_runtime_fingerprint": true,
+    "same_production_source_set_sha256": true,
+    "complete_original_41_station_plan_and_all_original_flags": true,
+    "final_and_reimported_topology": "one solid, one closed shell, zero free edges, BRepCheck valid",
+    "same_job_downloads": ["blade_solid.step", "blade_preview.stl", "blade_spec.json", "validation.json", "engine_manifest.json"]
+  },
+  "comparison_limits": {
+    "per_station_actual_chord_mm": 0.001,
+    "per_station_actual_twist_deg": 0.001,
+    "per_station_reference_axis_error_mm": 0.001,
+    "per_station_measured_te_mm": 0.001,
+    "per_station_contour_rms_mm": 0.001,
+    "per_station_contour_p95_mm": 0.001,
+    "per_station_contour_sampled_max_mm": 0.001,
+    "bbox_max_abs_difference_mm": 0.001,
+    "volume_absolute_difference_mm3": 0.05,
+    "surface_area_absolute_difference_mm2": 0.05,
+    "direct_step_same_frame_rms_mm": 0.005,
+    "direct_step_same_frame_p95_mm": 0.005,
+    "direct_step_same_frame_sampled_max_mm": 0.005
+  },
+  "direct_step_method": "existing bladegen.validation.geometry_validation.compare_steps with 41 parameter samples per face, no registration or rescaling",
+  "note": "STEP byte equality is diagnostic only. Exact input, runtime and production source identities are required independently."
+}

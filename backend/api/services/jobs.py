@@ -13,7 +13,15 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from api.services.result_verification import (
+    CompletionExpectation,
+    artifact_signatures,
+    required_artifacts,
+    verify_completed_result,
+)
 from bladegen.progress import PROGRESS_FILENAME, QUEUED_PROGRESS, read_progress
+from bladegen.runtime.definitions import definition_identity
+from bladegen.runtime.execution import format_timeout_seconds, resolve_build_timeout_seconds
 from bladegen.runtime.manager import require_runtime_ready
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
@@ -49,25 +57,41 @@ class Job:
     error: str | None = None
     output_dir: Path = field(default_factory=Path)
     submitted_at: float = field(default_factory=time.monotonic)
+    started_at: float | None = None
     completed_at: float | None = None
     runtime_root: str = ""
     runtime_fingerprint: str = ""
     runtime_build_id: str = ""
     runtime_contract: str = ""
+    definition_identity: dict = field(default_factory=dict)
+    worker_timeout_seconds: float = 0.0
+    requested_blade_count: int | None = None
 
     @property
     def elapsed_seconds(self) -> float:
         end = self.completed_at if self.completed_at is not None else time.monotonic()
         return round(max(0.0, end - self.submitted_at), 1)
 
+    @property
+    def queue_wait_seconds(self) -> float:
+        end = self.started_at if self.started_at is not None else time.monotonic()
+        return round(max(0.0, end - self.submitted_at), 1)
+
+    @property
+    def worker_elapsed_seconds(self) -> float:
+        if self.started_at is None:
+            return 0.0
+        end = self.completed_at if self.completed_at is not None else time.monotonic()
+        return round(max(0.0, end - self.started_at), 1)
+
 
 class JobManager:
     def __init__(
         self,
-        timeout_seconds: int | None = None,
+        timeout_seconds: float | int | None = None,
         run_root: Path | None = None,
     ) -> None:
-        self.timeout_seconds = timeout_seconds or int(os.getenv("BLADEGEN_BUILD_TIMEOUT", "300"))
+        self.timeout_seconds = resolve_build_timeout_seconds(timeout_seconds)
         self.run_root = run_root or RUN_ROOT
         self._jobs: dict[str, Job] = {}
         self._lock = threading.Lock()
@@ -79,6 +103,7 @@ class JobManager:
         if build_type not in {"blade", "propeller"}:
             raise ValueError(f"Unsupported build type: {build_type}")
         runtime = self._readiness_checker()
+        submitted_identity = definition_identity(spec, build_type)
         job_id = uuid.uuid4().hex
         output_dir = self.run_root / job_id
         output_dir.mkdir(parents=False, exist_ok=False)
@@ -92,6 +117,11 @@ class JobManager:
             runtime_fingerprint=runtime.fingerprint,
             runtime_build_id=runtime.build_id,
             runtime_contract=runtime.construction_contract,
+            definition_identity=submitted_identity,
+            worker_timeout_seconds=self.timeout_seconds,
+            requested_blade_count=(
+                spec["assembly"]["blade_count"] if build_type == "propeller" else None
+            ),
         )
         with self._lock:
             self._jobs[job_id] = job
@@ -130,7 +160,10 @@ class JobManager:
         job.completed_at = time.monotonic()
 
     def _run(self, job: Job, input_path: Path) -> None:
+        if job.worker_timeout_seconds <= 0.0:
+            job.worker_timeout_seconds = self.timeout_seconds
         with self._lock:
+            job.started_at = time.monotonic()
             job.status = "running"
             job.stage = "validation"
             job.stage_label = (
@@ -150,6 +183,8 @@ class JobManager:
             "--progress-file",
             str(job.output_dir / PROGRESS_FILENAME),
         ]
+        names = required_artifacts(job.build_type)
+        before_signatures = artifact_signatures(job.output_dir, names)
         try:
             worker_env = os.environ.copy()
             worker_env.update(
@@ -158,6 +193,9 @@ class JobManager:
                     "BLADEGEN_EXPECTED_RUNTIME_FINGERPRINT": job.runtime_fingerprint,
                     "BLADEGEN_JOB_ID": job.job_id,
                     "BLADEGEN_RUN_ID": job.job_id,
+                    "BLADEGEN_BUILD_TIMEOUT": format_timeout_seconds(
+                        job.worker_timeout_seconds
+                    ),
                 }
             )
             process = subprocess.run(
@@ -166,7 +204,7 @@ class JobManager:
                 env=worker_env,
                 capture_output=True,
                 text=True,
-                timeout=self.timeout_seconds,
+                timeout=job.worker_timeout_seconds,
                 check=False,
             )
             self._write_log(job.output_dir / "build_stdout.log", process.stdout)
@@ -174,45 +212,28 @@ class JobManager:
             if process.returncode:
                 message = (process.stderr or process.stdout or "build failed").strip()
                 raise RuntimeError(message[-4000:])
-            required = (
-                (
-                    "propeller_solid.step",
-                    "propeller_preview.stl",
-                    "propeller_spec.json",
-                    "blade_solid.step",
-                    "blade_spec.json",
-                    "validation.json",
-                    "engine_manifest.json",
-                )
-                if job.build_type == "propeller"
-                else (
-                    "blade_solid.step",
-                    "blade_preview.stl",
-                    "validation.json",
-                    "engine_manifest.json",
-                )
+            verify_completed_result(
+                job.output_dir,
+                CompletionExpectation(
+                    job_id=job.job_id,
+                    run_id=job.job_id,
+                    build_type=job.build_type,
+                    definition_identity=job.definition_identity,
+                    runtime_fingerprint=job.runtime_fingerprint,
+                    runtime_build_id=job.runtime_build_id,
+                    runtime_contract=job.runtime_contract,
+                    worker_timeout_seconds=job.worker_timeout_seconds,
+                    requested_blade_count=job.requested_blade_count,
+                ),
+                before_signatures,
             )
-            missing = [name for name in required if not (job.output_dir / name).is_file()]
-            if missing:
-                raise RuntimeError(f"Build did not produce required artifacts: {missing}")
-            engine_manifest = json.loads(
-                (job.output_dir / "engine_manifest.json").read_text(encoding="utf-8")
-            )
-            actual = engine_manifest.get("actually_loaded_runtime") or {}
-            if (
-                engine_manifest.get("state") != "COMPLETED"
-                or actual.get("fingerprint") != job.runtime_fingerprint
-                or actual.get("build_id") != job.runtime_build_id
-                or actual.get("construction_contract") != job.runtime_contract
-            ):
-                raise RuntimeError("Build runtime provenance did not match the queued engine.")
         except subprocess.TimeoutExpired as exc:
             self._write_log(job.output_dir / "build_stdout.log", exc.stdout)
             self._write_log(job.output_dir / "build_stderr.log", exc.stderr)
             with self._lock:
                 self._fail(
                     job,
-                    f"Build timed out after {self.timeout_seconds} seconds during "
+                    f"Build timed out after {format_timeout_seconds(job.worker_timeout_seconds)} seconds during "
                     f"{job.stage_label}",
                 )
         except Exception as exc:

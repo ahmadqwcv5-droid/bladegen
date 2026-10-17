@@ -46,7 +46,7 @@ verify only the CAD runtime, run `./scripts/setup_openvsp_fixed_plane.sh`
 (`setup_openvsp.sh` is a compatibility entrypoint). `OPENVSP_ROOT` remains the
 single explicit override and takes precedence, but an invalid or stock root is
 rejected without fallback. See the
-[managed runtime guide](docs/FIXED_PLANE_RUNTIME.md).
+[managed runtime guide](docs/developer/FIXED_PLANE_RUNTIME.md).
 
 ## Run
 
@@ -57,13 +57,26 @@ In separate terminals:
 ./scripts/start_frontend.sh
 ```
 
-Open `http://127.0.0.1:5173`. Use **Choose from Library** at any airfoil
+For the measured X-57 trial profile, run this single launcher from the
+repository root instead:
+
+```bash
+./scripts/start_level1_trial.sh
+```
+
+It serves the UI at `http://127.0.0.1:5175` with a 900-second per-design
+worker budget; the ordinary backend launcher retains its 300-second default.
+Use the exact [user-tested X-57 BladeSpec](fixtures/reference_user_x57/blade_spec_X57.json)
+for same-blade replay. See the [Level 1A scope](docs/releases/level1a/SCOPE_AND_STATUS.md)
+and [sprint/task index](docs/sprints/README.md) for the evidence boundaries.
+
+For the ordinary two-terminal start, open `http://127.0.0.1:5173`. Use **Choose from Library** at any airfoil
 station to search NACA profiles or import DAT/CSV coordinates. Imported geometry is
 embedded in exported BladeSpec JSON; local metadata persists under
 `user_data/airfoils/`. Sparse coordinate definitions receive a non-blocking
 pre-generation warning; the original coordinates are preserved and final STEP
-validation remains authoritative. See [Airfoil Library](docs/AIRFOIL_LIBRARY.md) and
-[Import Formats](docs/AIRFOIL_IMPORT_FORMATS.md).
+validation remains authoritative. See [Airfoil Library](docs/user/AIRFOIL_LIBRARY.md) and
+[Import Formats](docs/user/AIRFOIL_IMPORT_FORMATS.md).
 
 Choose **Single Blade** or **Full Propeller** without losing blade-editor state.
 Full Propeller exposes blade count, hub diameter/length, bore diameter, and
@@ -157,31 +170,31 @@ npm run test:e2e
 Sprint 02 reproducible CAD examples are in `examples/sprint02_case_a_three_section.json`,
 `examples/custom_multi_airfoil_finite_te.json`, and
 `examples/sprint02_case_c_eight_section.json`. See the
-[Sprint 02 report](docs/SPRINT_02_REPORT.md),
-[acceptance matrix](docs/SPRINT_02_ACCEPTANCE_MATRIX.md), and
-[Sprint 02.1 reliability report](docs/SPRINT_02_1_REPORT.md) for measured results.
+[Sprint 02 report](docs/sprints/02/SPRINT_02_REPORT.md),
+[acceptance matrix](docs/sprints/02/SPRINT_02_ACCEPTANCE_MATRIX.md), and
+[Sprint 02.1 reliability report](docs/sprints/02.1/SPRINT_02_1_REPORT.md) for measured results.
 The focused null/progress/camera corrections are documented in the
-[Patch 02.1.1 report](docs/PATCH_02_1_1_REPORT.md). Sprint 03A visual design
-and imported-profile CAD results are in the [Sprint 03A report](docs/SPRINT_03A_REPORT.md)
-and [acceptance matrix](docs/SPRINT_03A_ACCEPTANCE_MATRIX.md). Sprint 03B interactive station inspection, comparison, and stale-CAD synchronization are documented in the [Sprint 03B report](docs/SPRINT_03B_REPORT.md) and [acceptance matrix](docs/SPRINT_03B_ACCEPTANCE_MATRIX.md). Sprint 03C visual curve editing, transaction safety, and real-CAD evidence are documented in the [Sprint 03C report](docs/SPRINT_03C_REPORT.md) and [acceptance matrix](docs/SPRINT_03C_ACCEPTANCE_MATRIX.md). StrictMode-safe continuous editing and no-op history integrity are documented in the [Patch 03C.1 report](docs/PATCH_03C_1_REPORT.md).
+[Patch 02.1.1 report](docs/sprints/02.1.1/PATCH_02_1_1_REPORT.md). Sprint 03A visual design
+and imported-profile CAD results are in the [Sprint 03A report](docs/sprints/03A/SPRINT_03A_REPORT.md)
+and [acceptance matrix](docs/sprints/03A/SPRINT_03A_ACCEPTANCE_MATRIX.md). Sprint 03B interactive station inspection, comparison, and stale-CAD synchronization are documented in the [Sprint 03B report](docs/sprints/03B/SPRINT_03B_REPORT.md) and [acceptance matrix](docs/sprints/03B/SPRINT_03B_ACCEPTANCE_MATRIX.md). Sprint 03C visual curve editing, transaction safety, and real-CAD evidence are documented in the [Sprint 03C report](docs/sprints/03C/SPRINT_03C_REPORT.md) and [acceptance matrix](docs/sprints/03C/SPRINT_03C_ACCEPTANCE_MATRIX.md). StrictMode-safe continuous editing and no-op history integrity are documented in the [Patch 03C.1 report](docs/sprints/03C.1/PATCH_03C_1_REPORT.md).
 
 Sprint 04A full-propeller geometry, measured 2/3/4-blade acceptance, and known
-qualification limits are documented in the [Sprint 04A report](docs/SPRINT_04A_REPORT.md)
-and [acceptance matrix](docs/SPRINT_04A_ACCEPTANCE_MATRIX.md).
+qualification limits are documented in the [Sprint 04A report](docs/sprints/04A/SPRINT_04A_REPORT.md)
+and [acceptance matrix](docs/sprints/04A/SPRINT_04A_ACCEPTANCE_MATRIX.md).
 Dynamic assembly preflight, result-state separation, runtime capabilities, and
 complete project save/open are documented in the
-[Patch 04A.1 report](docs/PATCH_04A_1_REPORT.md) and
-[acceptance matrix](docs/PATCH_04A_1_ACCEPTANCE_MATRIX.md).
+[Patch 04A.1 report](docs/sprints/04A.1/PATCH_04A_1_REPORT.md) and
+[acceptance matrix](docs/sprints/04A.1/PATCH_04A_1_ACCEPTANCE_MATRIX.md).
 Sprint 04B reviewed bulk distribution input, airfoil-station setup, responsive
 canonical evaluation, and qualified generic CAD evidence are documented in the
-[Sprint 04B report](docs/SPRINT_04B_REPORT.md),
-[acceptance matrix](docs/SPRINT_04B_ACCEPTANCE_MATRIX.md),
-[performance qualification](docs/SPRINT_04B_PERFORMANCE.md), and
-[bulk-input format guide](docs/BULK_INPUT_FORMATS.md).
+[Sprint 04B report](docs/sprints/04B/SPRINT_04B_REPORT.md),
+[acceptance matrix](docs/sprints/04B/SPRINT_04B_ACCEPTANCE_MATRIX.md),
+[performance qualification](docs/sprints/04B/SPRINT_04B_PERFORMANCE.md), and
+[bulk-input format guide](docs/user/BULK_INPUT_FORMATS.md).
 The managed fixed-plane native engine, fail-closed product integration, and
 fresh X-57 production qualification are recorded in the
-[FP-01 integration report](docs/FP01_INTEGRATION_REPORT.md) and
-[acceptance matrix](docs/FP01_ACCEPTANCE_MATRIX.md).
+[FP-01 integration report](docs/sprints/FP01/FP01_INTEGRATION_REPORT.md) and
+[acceptance matrix](docs/sprints/FP01/FP01_ACCEPTANCE_MATRIX.md).
 
 ## Limitations and licensing
 
@@ -192,5 +205,5 @@ awareness, not legal advice; redistribution rights, including NASA OSA terms,
 must be reviewed for the intended distribution. No PropGen or other third-party
 application source was copied.
 
-See [architecture](docs/ARCHITECTURE.md), [geometry conventions](docs/GEOMETRY_CONVENTIONS.md),
-[validation policy](docs/VALIDATION_POLICY.md), and the [Patch 03A.1 engineering report](docs/PATCH_03A_1_REPORT.md).
+See [architecture](docs/developer/ARCHITECTURE.md), [geometry conventions](docs/developer/GEOMETRY_CONVENTIONS.md),
+[validation policy](docs/developer/VALIDATION_POLICY.md), and the [Patch 03A.1 engineering report](docs/sprints/03A.1/PATCH_03A_1_REPORT.md).

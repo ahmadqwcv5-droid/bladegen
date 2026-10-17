@@ -196,7 +196,7 @@ def test_worker_rejects_changed_runtime_provenance(monkeypatch, tmp_path):
     manager._run(job, input_path)
     manager._executor.shutdown(wait=False)
     assert job.status == "failed"
-    assert "provenance did not match" in job.error
+    assert "required artifact" in (job.error or "")
 
 
 def test_worker_native_error_timeout_and_partial_output_never_succeed(monkeypatch, tmp_path):

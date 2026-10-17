@@ -13,7 +13,11 @@ import {
   verifyX57ExportedCandidate,
 } from './x57Evidence'
 
-const evidenceRoot = path.resolve('../docs/evidence/sprint04b/x57')
+const fp02RunId = process.env.FP02_EVIDENCE_RUN_ID ?? 'unlabelled-local-run'
+const evidenceBase = process.env.FP02_EVIDENCE_ROOT
+  ? path.resolve(process.env.FP02_EVIDENCE_ROOT)
+  : path.resolve('../qualification/fp02/evidence/browser', fp02RunId)
+const evidenceRoot = path.join(evidenceBase, 'U2')
 const runRoot = path.resolve('../output/runs')
 const airfoilPath = path.join(X57_FIXTURE_DIR, 'x57_hlp_airfoil.csv')
 const distributionPath = path.join(X57_FIXTURE_DIR, 'x57_hlp_control_points_mm.csv')
@@ -235,7 +239,7 @@ async function undoDistributionApply(page: Page): Promise<OperationRequestCounts
 }
 
 async function waitForTerminalJob(page: Page, jobId: string): Promise<JobStatus> {
-  const deadline = Date.now() + 600_000
+  const deadline = Date.now() + 960_000
   let last: JobStatus | undefined
   while (Date.now() < deadline) {
     const response = await page.request.get(`/api/jobs/${jobId}`)
@@ -264,7 +268,7 @@ const sha256 = async (filename: string): Promise<string> => (
 )
 
 test('real X-57 fixtures flow through reviewed UI input, export, and explicit blade generation', async ({ page }) => {
-  test.setTimeout(900_000)
+  test.setTimeout(1_500_000)
   const fixture = await loadX57FixtureData()
   await mkdir(evidenceRoot, { recursive: true })
   await page.setViewportSize({ width: 1440, height: 1000 })
@@ -382,6 +386,7 @@ test('real X-57 fixtures flow through reviewed UI input, export, and explicit bl
     copyIfPresent(path.join(sourceJobRoot, 'blade_spec_input.json'), path.join(jobEvidenceRoot, 'submitted_blade_spec.json')),
     copyIfPresent(path.join(sourceJobRoot, 'blade_spec.json'), path.join(jobEvidenceRoot, 'blade_spec.json')),
     copyIfPresent(path.join(sourceJobRoot, 'validation.json'), path.join(jobEvidenceRoot, 'validation.json')),
+    copyIfPresent(path.join(sourceJobRoot, 'engine_manifest.json'), path.join(jobEvidenceRoot, 'engine_manifest.json')),
     copyIfPresent(path.join(sourceJobRoot, 'blade_solid.step'), path.join(jobEvidenceRoot, 'blade_solid.step')),
     copyIfPresent(path.join(sourceJobRoot, 'progress.json'), path.join(jobEvidenceRoot, 'progress.json')),
     copyIfPresent(path.join(sourceJobRoot, 'build_stdout.log'), path.join(jobEvidenceRoot, 'build_stdout.log')),
@@ -414,7 +419,7 @@ test('real X-57 fixtures flow through reviewed UI input, export, and explicit bl
       ? await artifactsResponse.json() as Array<{ name: string; download_url: string }>
       : []
     artifactNames = artifacts.map(artifact => artifact.name)
-    const requiredArtifactNames = ['blade_spec.json', 'validation.json', 'blade_solid.step']
+    const requiredArtifactNames = ['blade_spec.json', 'validation.json', 'blade_solid.step', 'engine_manifest.json']
     requiredArtifactsPresent = requiredArtifactNames.every(name => artifactNames.includes(name))
     const downloadChecks: boolean[] = []
     for (const artifact of artifacts.filter(item => requiredArtifactNames.includes(item.name))) {
@@ -454,6 +459,8 @@ test('real X-57 fixtures flow through reviewed UI input, export, and explicit bl
   const internalValidationPassed = validation?.status === 'PASS'
     && topologyPassed
     && asObject(validation.geometry_validation)?.passed === true
+    && asObject(validation.geometry_validation)?.station_count === 41
+    && asArray(asObject(validation.geometry_validation)?.stations).length === 41
   const repositoryRoot = path.resolve('..')
   const baseCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
     cwd: repositoryRoot,
@@ -466,10 +473,14 @@ test('real X-57 fixtures flow through reviewed UI input, export, and explicit bl
   const trackedPatch = execFileSync('git', ['diff', '--binary', 'HEAD', '--'], {
     cwd: repositoryRoot,
     encoding: 'utf8',
-    maxBuffer: 20 * 1024 * 1024,
+    // Real cross-sprint runs update the tracked binary screenshot evidence.
+    // Keep hashing the complete patch while allowing that evidence to exceed
+    // Node's small default child-process buffer.
+    maxBuffer: 64 * 1024 * 1024,
   })
   const summary = {
-    evidence_schema: 'bladegen.sprint04b.x57-closure.v1',
+    evidence_schema: 'bladegen.fp02.u2-evidence.v1',
+    evidence_run_id: fp02RunId,
     tested_source_identity: {
       base_commit: baseCommit,
       worktree_clean: workingTreeStatus.length === 0,

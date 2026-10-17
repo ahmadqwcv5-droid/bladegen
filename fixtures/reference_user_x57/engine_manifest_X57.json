@@ -1,0 +1,220 @@
+{
+  "schema": "bladegen.engine-manifest.v2",
+  "state": "COMPLETED",
+  "fixed_plane_contract": "bladegen.fixed-radial-sections.v1",
+  "requested_runtime": {
+    "selection": "OPENVSP_ROOT",
+    "root": "/media/pc/shared_data/01_projects/test_with_kimi/test_create_airfoli/bladegen/.tooling/openvsp-3.54.0-bladegen-fixed-plane.1/opt/OpenVSP",
+    "expected_build_id": "openvsp-3.54.0-bladegen-fixed-plane.1",
+    "expected_capability": "fixed_radial_sections_v1",
+    "expected_fingerprint": "af69cfbeb477880fd7caf13c3fbdef3a2f69f40430dafe4e5a330d9bb7836edd"
+  },
+  "actually_loaded_runtime": {
+    "build_id": "openvsp-3.54.0-bladegen-fixed-plane.1",
+    "construction_contract": "bladegen.fixed-radial-sections.v1",
+    "capability": "fixed_radial_sections_v1",
+    "upstream_version": "3.54.0",
+    "upstream_commit": "db6c6fe8f4eca27d7517f4ae0b2078abdd3fd927",
+    "patch_sha256": "0dd6f87b867ccaeb6518f8f01f7093e4e1a05f02d0c5a268c66cc1d157ed71d3",
+    "fingerprint": "af69cfbeb477880fd7caf13c3fbdef3a2f69f40430dafe4e5a330d9bb7836edd",
+    "openvsp_version": "OpenVSP 3.54.0",
+    "selection": "OPENVSP_ROOT",
+    "root": "/media/pc/shared_data/01_projects/test_with_kimi/test_create_airfoli/bladegen/.tooling/openvsp-3.54.0-bladegen-fixed-plane.1/opt/OpenVSP",
+    "manifest_path": "/media/pc/shared_data/01_projects/test_with_kimi/test_create_airfoli/bladegen/.tooling/openvsp-3.54.0-bladegen-fixed-plane.1/opt/OpenVSP/bladegen-runtime-manifest.json",
+    "python_module_path": "/media/pc/shared_data/01_projects/test_with_kimi/test_create_airfoli/bladegen/.tooling/openvsp-3.54.0-bladegen-fixed-plane.1/opt/OpenVSP/python/openvsp/openvsp/__init__.py",
+    "native_module_path": "/media/pc/shared_data/01_projects/test_with_kimi/test_create_airfoli/bladegen/.tooling/openvsp-3.54.0-bladegen-fixed-plane.1/opt/OpenVSP/python/openvsp/openvsp/_vsp.so",
+    "artifact_hashes": {
+      "LICENSE": "380ae9ac8ecce9f00822d74da9fab782d09fbeeafd9d4550355eebb0929c8166",
+      "python/openvsp/openvsp/__init__.py": "6256bfc5b68b007774b725240a74c9f4ab94a06648074d4d8afd8fb50542b46d",
+      "python/openvsp/openvsp/vsp.py": "ca04912431bd28276a4b4d6933387ceeac02c39faaea5059d6d229f81619d4a5",
+      "python/openvsp/openvsp/_vsp.so": "e9c91cd48148ddf7017631770aed019f3fda44c25bba4fa556f58d243472baea",
+      "python/openvsp_config/openvsp_config/__init__.py": "72c4c7a7318bfd6787e89a1e29a1cb2559066c909efa132013113989388c8033",
+      "share/bladegen/upstream.lock.json": "4ad503f701c95ae18862d4fee863552ff3baa1283438800a9de12d3741305fd5",
+      "share/bladegen/0001-bladegen-fixed-radial-sections.patch": "0dd6f87b867ccaeb6518f8f01f7093e4e1a05f02d0c5a268c66cc1d157ed71d3",
+      "share/bladegen/build.log": "47da195ce9de7f4604db0f8e1e2b1e58229a9ee30fdc5faaf1270fa49d12f0c8"
+    }
+  },
+  "runtime_readiness": {
+    "build_id": "openvsp-3.54.0-bladegen-fixed-plane.1",
+    "construction_contract": "bladegen.fixed-radial-sections.v1",
+    "capability": "fixed_radial_sections_v1",
+    "upstream_version": "3.54.0",
+    "upstream_commit": "db6c6fe8f4eca27d7517f4ae0b2078abdd3fd927",
+    "patch_sha256": "0dd6f87b867ccaeb6518f8f01f7093e4e1a05f02d0c5a268c66cc1d157ed71d3",
+    "fingerprint": "af69cfbeb477880fd7caf13c3fbdef3a2f69f40430dafe4e5a330d9bb7836edd",
+    "openvsp_version": "OpenVSP 3.54.0",
+    "selection": "OPENVSP_ROOT",
+    "root": "/media/pc/shared_data/01_projects/test_with_kimi/test_create_airfoli/bladegen/.tooling/openvsp-3.54.0-bladegen-fixed-plane.1/opt/OpenVSP",
+    "manifest_path": "/media/pc/shared_data/01_projects/test_with_kimi/test_create_airfoli/bladegen/.tooling/openvsp-3.54.0-bladegen-fixed-plane.1/opt/OpenVSP/bladegen-runtime-manifest.json",
+    "python_module_path": "/media/pc/shared_data/01_projects/test_with_kimi/test_create_airfoli/bladegen/.tooling/openvsp-3.54.0-bladegen-fixed-plane.1/opt/OpenVSP/python/openvsp/openvsp/__init__.py",
+    "native_module_path": "/media/pc/shared_data/01_projects/test_with_kimi/test_create_airfoli/bladegen/.tooling/openvsp-3.54.0-bladegen-fixed-plane.1/opt/OpenVSP/python/openvsp/openvsp/_vsp.so",
+    "artifact_hashes": {
+      "LICENSE": "380ae9ac8ecce9f00822d74da9fab782d09fbeeafd9d4550355eebb0929c8166",
+      "python/openvsp/openvsp/__init__.py": "6256bfc5b68b007774b725240a74c9f4ab94a06648074d4d8afd8fb50542b46d",
+      "python/openvsp/openvsp/vsp.py": "ca04912431bd28276a4b4d6933387ceeac02c39faaea5059d6d229f81619d4a5",
+      "python/openvsp/openvsp/_vsp.so": "e9c91cd48148ddf7017631770aed019f3fda44c25bba4fa556f58d243472baea",
+      "python/openvsp_config/openvsp_config/__init__.py": "72c4c7a7318bfd6787e89a1e29a1cb2559066c909efa132013113989388c8033",
+      "share/bladegen/upstream.lock.json": "4ad503f701c95ae18862d4fee863552ff3baa1283438800a9de12d3741305fd5",
+      "share/bladegen/0001-bladegen-fixed-radial-sections.patch": "0dd6f87b867ccaeb6518f8f01f7093e4e1a05f02d0c5a268c66cc1d157ed71d3",
+      "share/bladegen/build.log": "47da195ce9de7f4604db0f8e1e2b1e58229a9ee30fdc5faaf1270fa49d12f0c8"
+    }
+  },
+  "readiness_error": null,
+  "construction_policy": "fixed Y = R * r/R radial section; native derivative-driven m_ZRotate is calculated but identity is applied at that operation",
+  "implementation": {
+    "adapter_revision": "bladegen.openvsp-adapter.fixed-plane.1",
+    "resolver_revision": "bladegen-canonical-resolver-2",
+    "validation_revision": "bladegen.final-step-validation.3",
+    "source_set": {
+      "schema": "bladegen.production-core-source-set.v1",
+      "files": [
+        {
+          "path": "backend/api/services/jobs.py",
+          "sha256": "85e2dc136b42a98b133ea9a3b4b674b7577b755547826fdae6c6f2b247825a21"
+        },
+        {
+          "path": "backend/api/services/result_verification.py",
+          "sha256": "def7aae7f71a3c0612863d6682a4bb611e49b582d96f1e214bc64ad378052b44"
+        },
+        {
+          "path": "backend/bladegen/adapters/openvsp_adapter.py",
+          "sha256": "f863b175cd925f25f0a14eb768f0ae4e2e892935aee681d9cb74622044636d3d"
+        },
+        {
+          "path": "backend/bladegen/airfoils/canonical.py",
+          "sha256": "5ab55c57925ab52ae8f7f6e301158dce27f3826613a74d577ac07bfdc09de027"
+        },
+        {
+          "path": "backend/bladegen/airfoils/geometry_metrics.py",
+          "sha256": "e34abdabd68dfdb8b66f0828d30bddff3aa1f39b1a132d34a3317105a1acfdda"
+        },
+        {
+          "path": "backend/bladegen/assembly/builder.py",
+          "sha256": "8b6b8f1e6873b591687039d04afdf1c3bfcf36710617d61c64f83a431ecdf2ea"
+        },
+        {
+          "path": "backend/bladegen/assembly/capabilities.py",
+          "sha256": "8c9cc140bc1978048ff457e5997099f1f062f62ec9c9d1ba2a3324bf808fdba8"
+        },
+        {
+          "path": "backend/bladegen/assembly/hub.py",
+          "sha256": "5797ba8760151fee660983cfe1f77e6bb582d024ba3800c540fca3528908688b"
+        },
+        {
+          "path": "backend/bladegen/assembly/transforms.py",
+          "sha256": "17294f2197a3415365d6ebc1b8093e840017659374c972b101ce21240a18d09d"
+        },
+        {
+          "path": "backend/bladegen/assembly/validation.py",
+          "sha256": "18744c52c6239b0b6cd2dc6801183a0e6dbaf97572c51c13b2d44eb64819946f"
+        },
+        {
+          "path": "backend/bladegen/curves/canonical.py",
+          "sha256": "17035c16e83f184154a9b1d2304101d1f5f83d25b294031e6a4134b620020190"
+        },
+        {
+          "path": "backend/bladegen/curves/resolver.py",
+          "sha256": "d80623c99fb601d455c07250021818ccce7f0788601e1eb7f9eac6836eda0140"
+        },
+        {
+          "path": "backend/bladegen/models/blade_spec.py",
+          "sha256": "ce7e2a490f6814b6906ab97015ccdd0f6fe8a1c9c95c7b29bcccd8166eac397e"
+        },
+        {
+          "path": "backend/bladegen/models/propeller_spec.py",
+          "sha256": "18d15e0ecb4a1bb29cd75975dc42ea6c2abc067f01504cd2f18973b3ebaadc6b"
+        },
+        {
+          "path": "backend/bladegen/models/resolved_blade_spec.py",
+          "sha256": "2d95f646267a73bd1627db83a18ca9a4a7ff65cc550546dd6140e22fffe8fd8e"
+        },
+        {
+          "path": "backend/bladegen/pipeline.py",
+          "sha256": "cb1f7865aef6a9472d5c0b23be07804c112a610b0dcb357c3a25f5baa9ca9b74"
+        },
+        {
+          "path": "backend/bladegen/propeller_pipeline.py",
+          "sha256": "a793546489103c52d77806097b65d68df5dec1a65649bda69438219cea9d0bd2"
+        },
+        {
+          "path": "backend/bladegen/runtime/definitions.py",
+          "sha256": "dfbf5df755caa8324feb4db614ef277223d85a77c99ef702a8186165155832a2"
+        },
+        {
+          "path": "backend/bladegen/runtime/execution.py",
+          "sha256": "04865e29c22aaab74a5f85bd83d014bc12fc048d12f840a5189f6ca3b3a55af3"
+        },
+        {
+          "path": "backend/bladegen/runtime/identity.py",
+          "sha256": "8cc0cc99d1ae4319df38c9d748440f182173ad3d78ff4be5488597e9a8f94d23"
+        },
+        {
+          "path": "backend/bladegen/runtime/manager.py",
+          "sha256": "87ee8832b243f7c69bea7533dd0b32694e7ea90edce945d05951708de18c2af7"
+        },
+        {
+          "path": "backend/bladegen/runtime/provenance.py",
+          "sha256": "adc2f381c1e26903dc5f43ef87795a4aee2a53c802f6483687ad96b5ff8d6fb3"
+        },
+        {
+          "path": "backend/bladegen/solid/ocp_solidify.py",
+          "sha256": "90ad2392f1f034794ac7ed1a0e4d61df509915a54c1df0ca95b9c8b3a06b439c"
+        },
+        {
+          "path": "backend/bladegen/validation/expected_geometry.py",
+          "sha256": "b18e7057ca131d8fa135b41136bc09f4a4d3782f8618bfa4c70b3599eb64a069"
+        },
+        {
+          "path": "backend/bladegen/validation/geometry_validation.py",
+          "sha256": "b406d9b4983c1f6bff0127c40b4f0fb2fde4b928b81db62d386291eeafbfeede"
+        },
+        {
+          "path": "backend/bladegen/validation/measure_sections.py",
+          "sha256": "5f17c2658ea9b72ed86ff72e459b6c0bd4052a6d531c204b6a01b441bb1b44ef"
+        },
+        {
+          "path": "backend/bladegen/validation/policy.py",
+          "sha256": "85a702811f78d6636b28d14d09723141d7bed00d47bcd5639ead0a2d9028ea9e"
+        },
+        {
+          "path": "backend/bladegen/validation/propeller_preflight.py",
+          "sha256": "753da4340f69317082c53f5aa8c704e28314654423f6e5f69ded719dfb11872d"
+        },
+        {
+          "path": "backend/bladegen/validation/station_plan.py",
+          "sha256": "421c80d342bb710a1b4fc2a919fa927810d6fea70dcc31d5c7807041c57ce2d1"
+        }
+      ],
+      "aggregate_sha256": "d39ad693843ce8c317d7c0fd7812a98029ace8f6282bfb766518c77e75dfddd4"
+    }
+  },
+  "versions": {
+    "python": "3.12.3",
+    "python_abi": "3.12",
+    "openvsp": "OpenVSP 3.54.0",
+    "OCP": "7.9.3.1.1",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1"
+  },
+  "definition_hashes": {
+    "serialization": "RFC-8259 JSON; UTF-8; object keys sorted; separators ',' and ':'",
+    "canonical_submitted_sha256": "44363e7004604e39b0adfc2c098e58d5e0f807ab836ec41c530cf0a0be0f8bb7",
+    "canonical_resolved_sha256": "975a3cbf8a7442328c7183e588deedc759f080b1d721c0b1a65fc126db3cce00"
+  },
+  "definition_identity": {
+    "schema": "bladegen.definition-identity.v1",
+    "build_type": "blade",
+    "canonical_submitted_sha256": "44363e7004604e39b0adfc2c098e58d5e0f807ab836ec41c530cf0a0be0f8bb7",
+    "normalized_model_sha256": "b7c1a5fae99763f81fe181ba1dea02d6bad092c8f3a214053b606f88ac20b78a"
+  },
+  "execution": {
+    "run_id": "3970dc6383f1425b9726d5a9a00f4202",
+    "job_id": "3970dc6383f1425b9726d5a9a00f4202",
+    "execution_mode": "api_worker",
+    "api_worker_timeout_seconds": 900.0,
+    "external_timeout_seconds": null,
+    "requested_at_utc": "2026-10-15T12:20:48.588763+00:00",
+    "loaded_at_utc": "2026-10-15T12:20:48.657976+00:00",
+    "completed_at_utc": "2026-10-15T12:26:41.625594+00:00"
+  }
+}

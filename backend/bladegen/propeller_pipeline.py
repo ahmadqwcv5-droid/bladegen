@@ -11,7 +11,7 @@ from bladegen.assembly.hub import make_bore_cutter
 from bladegen.assembly.validation import common_volume_mm3, measured_bore
 from bladegen.pipeline import build as build_blade
 from bladegen.progress import ProgressReporter, ProgressState
-from bladegen.runtime.provenance import record_completed_runtime
+from bladegen.runtime.provenance import completion_context, record_completed_runtime
 from bladegen.solid.ocp_solidify import inspect_shape, read_step, write_step, write_stl
 from bladegen.validation.propeller_preflight import validate_propeller_payload
 
@@ -201,6 +201,7 @@ def build_propeller(
             blade_input,
             output_dir,
             manifest_submitted=payload,
+            manifest_build_type="propeller",
             defer_engine_completion=True,
         )
     except Exception as exc:
@@ -294,6 +295,13 @@ def build_propeller(
         "reference_blade_validation": blade_result,
         "engine": blade_result["engine"],
         "assembly_validation": assembly,
+        "completion_context": completion_context(
+            submitted=payload,
+            build_type="propeller",
+            identity=blade_result["engine"],
+            planned_section_count=blade_result["geometry_validation"]["station_count"],
+            completed_section_count=len(blade_result["geometry_validation"]["stations"]),
+        ),
         "outputs": {
             "propeller_solid_step": str(propeller_step.resolve()),
             "propeller_preview_stl": str(preview_path.resolve()),

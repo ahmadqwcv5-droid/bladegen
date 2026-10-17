@@ -1,0 +1,120 @@
+{
+  "schema_version": "0.2",
+  "name": "FP02_Q01_twist_edit",
+  "units": "mm",
+  "diameter_mm": 400.0,
+  "root_radius_ratio": 0.25,
+  "reference_axis_x_over_c": 0.25,
+  "rotation_direction": "normal",
+  "airfoil_sections": [
+    {
+      "r_over_R": 0.25,
+      "airfoil": {
+        "type": "naca4",
+        "code": "0012"
+      },
+      "trailing_edge_thickness_mm": 0.0
+    },
+    {
+      "r_over_R": 0.625,
+      "airfoil": {
+        "type": "naca4",
+        "code": "0012"
+      },
+      "trailing_edge_thickness_mm": 0.0
+    },
+    {
+      "r_over_R": 1.0,
+      "airfoil": {
+        "type": "naca4",
+        "code": "0012"
+      },
+      "trailing_edge_thickness_mm": 0.0
+    }
+  ],
+  "chord_distribution": {
+    "interpolation": "linear",
+    "points": [
+      {
+        "r_over_R": 0.25,
+        "chord_over_R": 0.32
+      },
+      {
+        "r_over_R": 0.625,
+        "chord_over_R": 0.23
+      },
+      {
+        "r_over_R": 1.0,
+        "chord_over_R": 0.12
+      }
+    ]
+  },
+  "twist_distribution": {
+    "interpolation": "linear",
+    "points": [
+      {
+        "r_over_R": 0.25,
+        "twist_deg": 30.0
+      },
+      {
+        "r_over_R": 0.625,
+        "twist_deg": 21.0
+      },
+      {
+        "r_over_R": 1.0,
+        "twist_deg": 7.0
+      }
+    ]
+  },
+  "rake_distribution": {
+    "interpolation": "linear",
+    "points": [
+      {
+        "r_over_R": 0.25,
+        "rake_over_R": 0.0
+      },
+      {
+        "r_over_R": 0.625,
+        "rake_over_R": 0.0
+      },
+      {
+        "r_over_R": 1.0,
+        "rake_over_R": 0.0
+      }
+    ]
+  },
+  "skew_distribution": {
+    "interpolation": "linear",
+    "points": [
+      {
+        "r_over_R": 0.25,
+        "skew_over_R": 0.0
+      },
+      {
+        "r_over_R": 0.625,
+        "skew_over_R": 0.0
+      },
+      {
+        "r_over_R": 1.0,
+        "skew_over_R": 0.0
+      }
+    ]
+  },
+  "thickness_distribution": {
+    "interpolation": "linear",
+    "points": [
+      {
+        "r_over_R": 0.25,
+        "thickness_ratio": 0.12
+      },
+      {
+        "r_over_R": 0.625,
+        "thickness_ratio": 0.12
+      },
+      {
+        "r_over_R": 1.0,
+        "thickness_ratio": 0.12
+      }
+    ]
+  }
+}

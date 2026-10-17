@@ -45,7 +45,7 @@ def test_value_just_above_each_named_threshold_fails(policy, metric: str) -> Non
 
 
 def test_validation_document_names_both_distinct_policies() -> None:
-    policy_document = (ROOT / "docs" / "VALIDATION_POLICY.md").read_text(encoding="utf-8")
+    policy_document = (ROOT / "docs" / "developer" / "VALIDATION_POLICY.md").read_text(encoding="utf-8")
     assert "Production control-section gate" in policy_document
     assert "Imported-profile acceptance target" in policy_document
     for value in ("0.030 mm", "0.060 mm", "0.120 mm", "0.020 mm", "0.040 mm", "0.050 mm"):

@@ -11,6 +11,8 @@ class ProgressResponse(BaseModel):
     progress_percent: int = Field(ge=0, le=100)
     message: str
     elapsed_seconds: float = Field(ge=0.0)
+    queue_wait_seconds: float = Field(ge=0.0)
+    worker_elapsed_seconds: float = Field(ge=0.0)
     error: str | None = None
     runtime_build_id: str | None = None
     construction_contract: str | None = None

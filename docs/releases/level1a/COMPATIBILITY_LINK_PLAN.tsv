@@ -1,0 +1,25 @@
+link	target	reason
+docs/sprints/02.1/screenshots	../../screenshots	Preserve old screenshot links without editing report bytes
+docs/sprints/02.1.1/screenshots	../../screenshots	Preserve old screenshot links without editing report bytes
+docs/sprints/03A/screenshots	../../screenshots	Preserve old screenshot links without editing report bytes
+docs/sprints/03A.1/screenshots	../../screenshots	Preserve old screenshot links without editing report bytes
+docs/sprints/03B/screenshots	../../screenshots	Preserve old screenshot links without editing report bytes
+docs/sprints/03B.1/screenshots	../../screenshots	Preserve old screenshot links without editing report bytes
+docs/sprints/03C/screenshots	../../screenshots	Preserve old screenshot links without editing report bytes
+docs/sprints/03C.1/screenshots	../../screenshots	Preserve old screenshot links without editing report bytes
+docs/sprints/04A/screenshots	../../screenshots	Preserve old screenshot links without editing report bytes
+docs/sprints/04A.1/screenshots	../../screenshots	Preserve old screenshot links without editing report bytes
+docs/sprints/04A.2/screenshots	../../screenshots	Preserve old screenshot links without editing report bytes
+docs/sprints/04B/screenshots	../../screenshots	Preserve old screenshot links without editing report bytes
+docs/sprints/04B/evidence	../../evidence	Preserve old X-57 evidence links without moving evidence
+docs/sprints/03A/AIRFOIL_IMPORT_FORMATS.md	../../user/AIRFOIL_IMPORT_FORMATS.md	Point to current guide without duplicate copy
+docs/sprints/04A/PROPELLER_ASSEMBLY_CONVENTIONS.md	../../developer/PROPELLER_ASSEMBLY_CONVENTIONS.md	Point to current guide without duplicate copy
+docs/sprints/04A.1/PATCH_04A_2_ACCEPTANCE_MATRIX.md	../04A.2/PATCH_04A_2_ACCEPTANCE_MATRIX.md	Point to later corrective matrix
+docs/sprints/04A.1/PATCH_04A_2_REPORT.md	../04A.2/PATCH_04A_2_REPORT.md	Point to later corrective report
+docs/sprints/04B/BULK_INPUT_FORMATS.md	../../user/BULK_INPUT_FORMATS.md	Point to current guide without duplicate copy
+docs/sprints/FP02/LEVEL1_USER_TRIAL_AR.md	../../user/LEVEL1_USER_TRIAL_AR.md	Point to current guide without duplicate copy
+docs/sprints/examples	../../examples	Preserve old report links to active examples
+docs/sprints/output	../../output	Preserve old report links to retained jobs
+docs/sprints/qualification	../../qualification	Preserve old report links to qualification evidence
+docs/sprints/backend	../../backend	Preserve old report links to active backend sources
+docs/sprints/scripts	../../scripts	Preserve old report links to maintained launchers

@@ -18,7 +18,7 @@ from OCP.TopoDS import TopoDS
 from OCP.TopTools import TopTools_HSequenceOfShape
 from scipy.spatial import cKDTree
 
-from bladegen.models import BladeSpec
+from bladegen.models import BladeSpec, RotationDirection
 from bladegen.solid.ocp_solidify import read_step, shapes
 from bladegen.validation.expected_geometry import placed_contour, section_transform
 from bladegen.validation.policy import (
@@ -131,6 +131,11 @@ def _identity_metrics(
     return thickness, camber
 
 
+def _twist_degrees(chord_vector: np.ndarray, rotation_direction: RotationDirection) -> float:
+    angle = math.degrees(math.atan2(chord_vector[1], chord_vector[0]))
+    return 90.0 + angle if rotation_direction is RotationDirection.REVERSE else 90.0 - angle
+
+
 def measure_sections(step_path: Path, spec: BladeSpec) -> list[dict]:
     solid = read_step(step_path)
     radius = spec.diameter_mm / 2.0
@@ -149,7 +154,7 @@ def measure_sections(step_path: Path, spec: BladeSpec) -> list[dict]:
             _vertices(section_shape), state
         )
         chord = float(np.linalg.norm(chord_vector))
-        twist = 90.0 - math.degrees(math.atan2(chord_vector[1], chord_vector[0]))
+        twist = _twist_degrees(chord_vector, spec.rotation_direction)
         actual_reference = leading + spec.reference_axis_x_over_c * chord_vector
         expected_reference, _, _ = section_transform(state)
         distances = symmetric_distances(cad_contour, expected_contour)

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import path from 'node:path'
 import { submitBuild, waitForExactResult } from './jobIdentity'
 
-const evidenceRoot = path.resolve('../docs/screenshots/patch02_1_1')
+const evidenceRoot = (process.env.L1A_EVIDENCE_ROOT ? path.resolve(process.env.L1A_EVIDENCE_ROOT, "screenshots/patch02_1_1") : path.resolve('../docs/screenshots/patch02_1_1'))
 const exampleRoot = path.resolve('../examples')
 
 const cases = [

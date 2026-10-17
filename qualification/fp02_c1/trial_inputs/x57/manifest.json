@@ -1,0 +1,57 @@
+{
+  "package_purpose": "Source data for manual product acceptance, NOT a generated or validated BladeGen result.",
+  "reference_model": "Official NASA X-57 Maxwell CRM v4.4.1 OpenVSP model",
+  "data_origin": "Previously uploaded x57_hlp_blade_reference.json; extracted in earlier project work from official model. Official original is not re-downloaded in this preparation.",
+  "source_official_url": "https://sacd.larc.nasa.gov/wp-content/uploads/sites/167/2023/04/X57_Maxwell_CRM_v4.4.1.vsp3_.zip",
+  "source_vsp3_sha256_recorded_in_extraction": "e9ab426ae06489003fc990fd044a330ad559846047a46a1f28cee264647960c9",
+  "extracted_json_sha256": "de090fd1efd47b0cbf7baa5474ccfd388ea379f25bb46f84e6010b49977032cb",
+  "diameter_mm": 575.9200184294399,
+  "radius_mm": 287.96000921471995,
+  "root_r_over_R": 0.20238,
+  "reference_axis_x_over_c": 0.5,
+  "rotation_direction": "normal",
+  "official_blade_count": 5,
+  "airfoil_station_count": 2,
+  "points_upper": 74,
+  "points_lower": 67,
+  "control_points_per_distribution": {
+    "chord": 40,
+    "twist": 40,
+    "rake": 40,
+    "skew": 40
+  },
+  "original_curve_types": {
+    "chord": "PCHIP",
+    "twist": "PCHIP",
+    "rake": "PCHIP",
+    "skew": "PCHIP",
+    "sweep": "LINEAR",
+    "thickness": "LINEAR",
+    "induced_lift_coefficient": "LINEAR",
+    "axial": "LINEAR",
+    "tangential": "LINEAR"
+  },
+  "source_thickness_ratio": 0.1305067267946498,
+  "source_physical_te_mm": 0.0,
+  "transforms_applied_to_data": [
+    "diameter/radius meters converted to mm by multiplying by 1000",
+    "chord/rake/skew normalized controls multiplied by radius_mm for display sheet",
+    "zero third coordinate omitted from explicit-surface airfoil CSV",
+    "no resampling, no smoothing, no shape-fitting, no chord-line rotation, no CAD generation"
+  ],
+  "caveats": [
+    "Keep explicit-surface CSV normalization OFF to preserve source coordinates.",
+    "Current UI assigns imported profile geometric t/c. A source native spline-thickness versus polygon-measurement difference must be recorded, not silently claimed exact.",
+    "Native source OpenVSP PCHIP and product SciPy PCHIP must be compared; equal controls do not assert identical intermediate surfaces.",
+    "Official HLP has 5 blades; current qualified assembly supports 2-4. Single-blade acceptance only.",
+    "Use original official VSP3 reference for final geometric comparison. Do not use a previously rebuilt BladeGen output as the ground truth.",
+    "This package has not been run end-to-end in the current application and has no PASS classification."
+  ],
+  "preparation_checks": {
+    "coordinate_csv_roundtrip": "PASS, all original x/y doubles preserved",
+    "controls_count": "40 each",
+    "physical_unit_roundtrip": "PASS; relative tolerance 1e-12",
+    "product_cad_build": "NOT RUN",
+    "official_reference_comparison": "NOT RUN"
+  }
+}
