@@ -26,3 +26,8 @@ docs/evidence/
 /SPRINT_04B_Independent_Review.zip
 /X57_Fixtures_For_Sprint04B.zip
 /docs/X57_04B_Closure_Independent_Checks.zip
+
+# Regenerable L1A trial downloads, CAD and logs stay local; keep the reference
+# fixtures, repeatability contract, comparator and final report versionable.
+/qualification/l1a_01/evidence/
+/qualification/l1a_01/incoming/

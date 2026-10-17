@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import importlib.metadata
 import json
 import os
@@ -12,17 +11,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .definitions import canonical_json_sha256, definition_identity
+from .execution import resolve_build_timeout_seconds
+from .identity import implementation_source_identity
 from .manager import CONSTRUCTION_CONTRACT, RuntimeIdentity, selected_runtime_root
 
-ENGINE_MANIFEST_SCHEMA = "bladegen.engine-manifest.v1"
+ENGINE_MANIFEST_SCHEMA = "bladegen.engine-manifest.v2"
+COMPLETION_CONTEXT_SCHEMA = "bladegen.completion-context.v1"
 ADAPTER_REVISION = "bladegen.openvsp-adapter.fixed-plane.1"
-VALIDATION_REVISION = "bladegen.final-step-validation.1"
+VALIDATION_REVISION = "bladegen.final-step-validation.3"
 SERIALIZATION = "RFC-8259 JSON; UTF-8; object keys sorted; separators ',' and ':'"
-
-
-def _canonical_sha256(value: Any) -> str:
-    data = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-    return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
 
 def _package_version(name: str) -> str | None:
@@ -32,23 +30,13 @@ def _package_version(name: str) -> str | None:
         return None
 
 
-def implementation_hashes() -> dict[str, str]:
-    files = {
-        "adapter": Path(__file__).resolve().parents[1] / "adapters" / "openvsp_adapter.py",
-        "resolver": Path(__file__).resolve().parents[1] / "curves" / "resolver.py",
-        "validation": (
-            Path(__file__).resolve().parents[1] / "validation" / "geometry_validation.py"
-        ),
-    }
-    return {name: hashlib.sha256(path.read_bytes()).hexdigest() for name, path in files.items()}
-
-
 def begin_engine_manifest(
     path: Path,
     *,
     submitted: dict[str, Any],
     resolved: dict[str, Any],
     identity: RuntimeIdentity | None,
+    build_type: str = "blade",
     readiness_error: str | None = None,
 ) -> dict[str, Any]:
     try:
@@ -59,6 +47,8 @@ def begin_engine_manifest(
         requested_root_value = os.getenv("OPENVSP_ROOT")
     job_id = os.getenv("BLADEGEN_JOB_ID")
     external_timeout = os.getenv("BLADEGEN_EXTERNAL_TIMEOUT_SECONDS")
+    worker_timeout = resolve_build_timeout_seconds() if job_id else None
+    submitted_identity = definition_identity(submitted, build_type)
     payload: dict[str, Any] = {
         "schema": ENGINE_MANIFEST_SCHEMA,
         "state": "REQUESTED" if identity else "REJECTED",
@@ -81,7 +71,7 @@ def begin_engine_manifest(
             "adapter_revision": ADAPTER_REVISION,
             "resolver_revision": resolved.get("resolver_version"),
             "validation_revision": VALIDATION_REVISION,
-            "source_sha256": implementation_hashes(),
+            "source_set": implementation_source_identity(),
         },
         "versions": {
             "python": platform.python_version(),
@@ -93,16 +83,15 @@ def begin_engine_manifest(
         },
         "definition_hashes": {
             "serialization": SERIALIZATION,
-            "canonical_submitted_sha256": _canonical_sha256(submitted),
-            "canonical_resolved_sha256": _canonical_sha256(resolved),
+            "canonical_submitted_sha256": canonical_json_sha256(submitted),
+            "canonical_resolved_sha256": canonical_json_sha256(resolved),
         },
+        "definition_identity": submitted_identity,
         "execution": {
             "run_id": os.getenv("BLADEGEN_RUN_ID") or path.parent.name,
             "job_id": job_id,
             "execution_mode": "api_worker" if job_id else "direct_cli",
-            "api_worker_timeout_seconds": (
-                int(os.getenv("BLADEGEN_BUILD_TIMEOUT", "300")) if job_id else None
-            ),
+            "api_worker_timeout_seconds": worker_timeout,
             "external_timeout_seconds": (
                 int(external_timeout) if external_timeout is not None else None
             ),
@@ -111,6 +100,34 @@ def begin_engine_manifest(
     }
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return payload
+
+
+def completion_context(
+    *,
+    submitted: dict[str, Any],
+    build_type: str,
+    identity: RuntimeIdentity | dict[str, Any],
+    planned_section_count: int,
+    completed_section_count: int,
+) -> dict[str, Any]:
+    """Bind a current result to its job, definition, runtime, and full station set."""
+    job_id = os.getenv("BLADEGEN_JOB_ID")
+    runtime = identity.safe_dict() if isinstance(identity, RuntimeIdentity) else identity
+    return {
+        "schema": COMPLETION_CONTEXT_SCHEMA,
+        "build_type": build_type,
+        "run_id": os.getenv("BLADEGEN_RUN_ID") or None,
+        "job_id": job_id,
+        "definition_identity": definition_identity(submitted, build_type),
+        "runtime": {
+            "fingerprint": runtime["fingerprint"],
+            "build_id": runtime["build_id"],
+            "construction_contract": runtime["construction_contract"],
+        },
+        "planned_section_count": planned_section_count,
+        "completed_section_count": completed_section_count,
+        "worker_timeout_seconds": resolve_build_timeout_seconds() if job_id else None,
+    }
 
 
 def record_loaded_runtime(path: Path, identity: RuntimeIdentity) -> None:

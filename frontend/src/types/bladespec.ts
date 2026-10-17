@@ -74,6 +74,8 @@ export type Job = {
   progress_percent: number
   message: string
   elapsed_seconds: number
+  queue_wait_seconds?: number
+  worker_elapsed_seconds?: number
   error?: string | null
 }
 

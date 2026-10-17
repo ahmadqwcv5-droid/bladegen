@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import path from 'node:path'
 import { submitBuild, waitForExactResult } from './jobIdentity'
 
-const evidenceRoot = path.resolve('../docs/screenshots/sprint04a')
+const evidenceRoot = (process.env.L1A_EVIDENCE_ROOT ? path.resolve(process.env.L1A_EVIDENCE_ROOT, "screenshots/sprint04a") : path.resolve('../docs/screenshots/sprint04a'))
 const evidence = (name: string) => path.join(evidenceRoot, name)
 
 async function setBladeCount(page: Page, count: number) {

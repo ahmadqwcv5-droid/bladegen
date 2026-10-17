@@ -1,0 +1,4 @@
+r_over_R,chord_over_R,twist_deg,rake_over_R,skew_over_R,thickness_ratio
+0.25,0.32,30,0,0,0.12
+0.625,0.23,18,0,0,0.12
+1,0.12,7,0,0,0.12

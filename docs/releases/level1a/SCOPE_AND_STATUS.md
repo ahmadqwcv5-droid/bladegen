@@ -1,0 +1,9 @@
+# Level 1A — stable single-blade baseline (tested scope)
+
+Status: **L1A_BLADE_BASELINE_VERIFIED_AFTER_CLEANUP**. This means **a repeatable, user-tested single-blade workflow for the specific exercised designs**, not completion of Level 1 or support for arbitrary blades. The user reported successfully creating and twist-editing a simple blade, and importing/generating the X-57-derived blade through the UI; they also reported easier editing and a good import experience. Those are hands-on observations. Automated qualification is recorded separately in [FP02-C1](../../sprints/FP02-C1/) and the [L1A-01 report](../../sprints/L1A-01/L1A_01_REPORT.md).
+
+The reference for this cleanup is the user's successful UI job `3970dc6383f1425b9726d5a9a00f4202`, not the earlier failed X-57 job. The exact supplied [BladeSpec](../../../fixtures/reference_user_x57/blade_spec_X57.json), [validation](../../../fixtures/reference_user_x57/validation_X57.json), and [engine manifest](../../../fixtures/reference_user_x57/engine_manifest_X57.json) are retained with their original hashes. Its managed OpenVSP fixed-plane runtime is `openvsp-3.54.0-bladegen-fixed-plane.1` with contract `bladegen.fixed-radial-sections.v1`.
+
+The 900-second `level1-trial` launcher is the qualified trial profile; the ordinary 300-second default is not qualified for this X-57 case. One closed, valid STEP solid and the complete internal station checks are required. External NASA surface fidelity remains **UNVERIFIED**. This baseline makes no new aerodynamic, structural, manufacturing, desktop-portability, or arbitrary-geometry guarantee.
+
+Full-propeller implementation and its existing automated regressions remain in the repository. The user's hands-on assembly acceptance and further propeller development are deferred; automated evidence is not the same as personal acceptance.

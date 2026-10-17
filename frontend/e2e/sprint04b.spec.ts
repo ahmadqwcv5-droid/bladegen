@@ -2,7 +2,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test'
 import path from 'node:path'
 import { submitBuild, waitForExactResult } from './jobIdentity'
 
-const evidenceRoot = path.resolve('../docs/screenshots/sprint04b')
+const evidenceRoot = (process.env.L1A_EVIDENCE_ROOT ? path.resolve(process.env.L1A_EVIDENCE_ROOT, "screenshots/sprint04b") : path.resolve('../docs/screenshots/sprint04b'))
 const evidence = (name: string) => path.join(evidenceRoot, name)
 
 const percentile = (values: number[], fraction: number) => {
@@ -120,7 +120,7 @@ test('bulk engineering input is reviewed once, remains editable, and explicitly 
   await expect(page.getByText('Thickness (2)')).toBeVisible()
   await waitForPreview(page)
 
-  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:5174' })
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(page.url()).origin })
   await page.getByRole('button', { name: 'Import Distributions' }).click()
   let dialog = page.getByRole('dialog', { name: 'Import Distributions' })
   await page.evaluate(text => navigator.clipboard.writeText(text), distributionText('\t'))

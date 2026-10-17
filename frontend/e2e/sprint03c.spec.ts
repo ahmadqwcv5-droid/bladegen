@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import path from 'node:path'
 import { submitBuild, waitForExactResult } from './jobIdentity'
 
-const evidenceRoot = path.resolve('../docs/screenshots/patch03c1')
+const evidenceRoot = (process.env.L1A_EVIDENCE_ROOT ? path.resolve(process.env.L1A_EVIDENCE_ROOT, "screenshots/patch03c1") : path.resolve('../docs/screenshots/patch03c1'))
 const evidence = (name: string) => path.join(evidenceRoot, name)
 
 async function dragControlTo(page: Page, marker: Locator, targetValue: number) {

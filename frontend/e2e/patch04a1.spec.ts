@@ -2,7 +2,7 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 
-const evidenceRoot = path.resolve('../docs/screenshots/patch04a2')
+const evidenceRoot = (process.env.L1A_EVIDENCE_ROOT ? path.resolve(process.env.L1A_EVIDENCE_ROOT, 'screenshots/patch04a2') : path.resolve('../docs/screenshots/patch04a2'))
 const evidence = (name: string) => path.join(evidenceRoot, name)
 
 type Artifact = { name: string; size_bytes: number; download_url: string }
@@ -196,7 +196,7 @@ test('90×30 project verifies exact jobs A/B/C and rebuilds in an isolated brows
   watchBuildRequests(freshContext, buildRequests)
   try {
     const fresh = await freshContext.newPage()
-    await fresh.goto('http://127.0.0.1:5174/')
+    await fresh.goto(new URL('/', page.url()).toString())
     await expect(fresh.getByText('Airfoil Stations (5)')).toBeVisible({ timeout: 30_000 })
     await fresh.locator('input[type="file"]').setInputFiles(downloadPath!)
     await expect(fresh.getByRole('button', { name: 'Full Propeller' })).toHaveAttribute('aria-pressed', 'true')

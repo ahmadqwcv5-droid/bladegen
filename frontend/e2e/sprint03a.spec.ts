@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import path from 'node:path'
 import { submitBuild, waitForExactResult } from './jobIdentity'
 
-const evidence = (name: string) => path.resolve('../docs/screenshots/sprint03a', name)
+const evidence = (name: string) => (process.env.L1A_EVIDENCE_ROOT ? path.resolve(process.env.L1A_EVIDENCE_ROOT, 'screenshots/sprint03a', name) : path.resolve('../docs/screenshots/sprint03a', name))
 const fixture = path.resolve('../backend/tests/fixtures/airfoils/independent_analytic_finite_te.dat')
 
 test('imported airfoil visual-design workflow produces a validated real STEP', async ({ page }) => {

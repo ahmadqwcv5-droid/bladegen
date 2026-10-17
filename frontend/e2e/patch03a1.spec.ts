@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import path from 'node:path'
 import { submitBuild, waitForExactResult } from './jobIdentity'
 
-const evidence = (name: string) => path.resolve('../docs/screenshots/patch03a1', name)
+const evidence = (name: string) => (process.env.L1A_EVIDENCE_ROOT ? path.resolve(process.env.L1A_EVIDENCE_ROOT, 'screenshots/patch03a1', name) : path.resolve('../docs/screenshots/patch03a1', name))
 const sparseFixture = path.resolve('../backend/tests/fixtures/airfoils/independent_cambered_finite_te.dat')
 const acceptedFixture = path.resolve('../backend/tests/fixtures/airfoils/independent_analytic_finite_te.dat')
 

@@ -93,6 +93,7 @@ def test_manager_confirms_success_at_100(monkeypatch, tmp_path: Path) -> None:
         return subprocess.CompletedProcess(command, 0, "ok", "")
 
     monkeypatch.setattr(subprocess, "run", run)
+    monkeypatch.setattr("api.services.jobs.verify_completed_result", lambda *args: None)
     manager._run(job, input_path)
     assert job.status == "succeeded"
     assert job.progress_percent == 100

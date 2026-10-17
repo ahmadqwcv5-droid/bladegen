@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import path from 'node:path'
 import { submitBuild, waitForExactResult } from './jobIdentity'
 
-const evidenceRoot = path.resolve('../docs/screenshots/patch03b1')
+const evidenceRoot = (process.env.L1A_EVIDENCE_ROOT ? path.resolve(process.env.L1A_EVIDENCE_ROOT, "screenshots/patch03b1") : path.resolve('../docs/screenshots/patch03b1'))
 const evidence = (name: string) => path.join(evidenceRoot, name)
 
 test('real CAD station inspection and canonical comparison remain revision-safe', async ({ page }) => {

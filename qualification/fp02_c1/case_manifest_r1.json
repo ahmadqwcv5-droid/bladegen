@@ -1,0 +1,144 @@
+{
+  "schema": "bladegen.fp02-c1-case-manifest.v1",
+  "frozen_before_cad": true,
+  "case_count": 8,
+  "reverse_qualification": "Q04 only; reverse is already declared by the current product contract",
+  "q01_twist_edit": {
+    "path": "qualification/fp02/cases/Q01_twist_edit.json",
+    "sha256": "4b3915b27cd063bf52fc957f6f5f54f81ccab9dfd2f495771579158da2b5dea4",
+    "station_r_over_R": 0.625,
+    "before_twist_deg": 18.0,
+    "after_twist_deg": 21.0
+  },
+  "cases": [
+    {
+      "id": "Q01",
+      "build_type": "blade",
+      "definition_path": "qualification/fp02/cases/Q01.json",
+      "sha256": "ce6ae6b6668199c1de18c63ce2b08e16c88833b0ae44e40394eedbe8b8b10024",
+      "origin": "synthetic frozen FP02 browser authoring case",
+      "coverage": "three NACA 0012 stations; zero rake/skew; zero physical TE; all-linear",
+      "rotation_direction": "normal",
+      "expected_status": "PASS",
+      "planned_section_count": 5,
+      "acceptance_policy": "unchanged production section/topology/round-trip policy"
+    },
+    {
+      "id": "Q02",
+      "build_type": "blade",
+      "definition_path": "qualification/fp02/cases/Q02.json",
+      "sha256": "b1a5119980d84df54fbb74f88c4e9a79b6bee635c566f8ad4106848fdada3c9e",
+      "origin": "existing custom_multi_airfoil_finite_te variant; interpolation explicitly PCHIP",
+      "coverage": "five mixed/cambered NACA stations; positive rake; finite TE; all-PCHIP",
+      "rotation_direction": "normal",
+      "expected_status": "PASS",
+      "planned_section_count": 11,
+      "acceptance_policy": "unchanged production section/topology/round-trip policy"
+    },
+    {
+      "id": "Q03",
+      "build_type": "blade",
+      "definition_path": "qualification/fp02/cases/Q03.json",
+      "sha256": "c5cc480b3b72d3fafc3d08dbb9a6b5d7722bad7523bc799000fbd042d7cba73c",
+      "origin": "Q02-derived; only name/rake/skew changed",
+      "coverage": "Q02 family; negative rake slope; signed skew; unrelated engineering inputs fixed",
+      "rotation_direction": "normal",
+      "expected_status": "PASS",
+      "planned_section_count": 11,
+      "acceptance_policy": "unchanged production section/topology/round-trip policy"
+    },
+    {
+      "id": "Q04.R1",
+      "build_type": "blade",
+      "definition_path": "qualification/fp02_c1/cases/Q04.R1.json",
+      "sha256": "e5e1f8510993af7bb6a5f171d67ca1b64b80a5970413aaca18f6a7f90cb25b03",
+      "origin": "approved Q04 coordinate-authority fixture revision; original retained as negative regression",
+      "coverage": "eight identical imported-coordinate profiles; full-precision natural thickness at unchanged controls; Reverse",
+      "rotation_direction": "reverse",
+      "expected_status": "PASS",
+      "planned_section_count": 26,
+      "acceptance_policy": "unchanged production section/topology/round-trip policy"
+    },
+    {
+      "id": "Q05",
+      "build_type": "blade",
+      "definition_path": "qualification/fp02/cases/Q05.json",
+      "sha256": "775e7bd571c815ea88aa8086208f50eb4663375d5953414178f7e753d5425d10",
+      "origin": "immutable retained source-derived submitted definition",
+      "coverage": "two imported stations; 40 chord/twist/rake/skew controls; existing 41-station plan",
+      "rotation_direction": "normal",
+      "expected_status": "PASS",
+      "planned_section_count": 41,
+      "acceptance_policy": "unchanged production section/topology/round-trip policy"
+    },
+    {
+      "id": "Q06",
+      "build_type": "propeller",
+      "definition_path": "qualification/fp02/cases/Q06.json",
+      "sha256": "7e8ca385c7813ebb7ef86b57ca68762ac8ae1a1a2ac1afe59fbc7d0001abf99c",
+      "origin": "existing supported two-blade assembly fixture",
+      "coverage": "two blades; supported 90x45 mm hub and 12 mm bore",
+      "rotation_direction": "normal",
+      "expected_status": "PASS",
+      "planned_section_count": 11,
+      "acceptance_policy": "unchanged production section/topology/round-trip policy"
+    },
+    {
+      "id": "Q07",
+      "build_type": "propeller",
+      "definition_path": "qualification/fp02/cases/Q07.json",
+      "sha256": "c06e57ad15c97d10053f93c1daf74adb3f591c0f7dc837655bf89fca8b78e0cf",
+      "origin": "existing supported three-blade assembly fixture",
+      "coverage": "three blades; supported 90x45 mm hub and 12 mm bore",
+      "rotation_direction": "normal",
+      "expected_status": "PASS",
+      "planned_section_count": 11,
+      "acceptance_policy": "unchanged production section/topology/round-trip policy"
+    },
+    {
+      "id": "Q08",
+      "build_type": "propeller",
+      "definition_path": "qualification/fp02/cases/Q08.json",
+      "sha256": "4532f43638d847d5520d175e8fcb3c273528f207d40c2caf25f59ab3d79b90be",
+      "origin": "existing supported four-blade assembly fixture",
+      "coverage": "four blades; supported 90x45 mm hub and 12 mm bore",
+      "rotation_direction": "normal",
+      "expected_status": "PASS",
+      "planned_section_count": 11,
+      "acceptance_policy": "unchanged production section/topology/round-trip policy"
+    }
+  ],
+  "historical_manifest": {
+    "path": "qualification/fp02/case_manifest.json",
+    "sha256": "1598cf6efaf060d85dcc2240a84694dcbc6f1a09b7eed6bb27c7a103e1564f30",
+    "status": "historical 5 PASS / 2 FAIL / 1 REJECTED"
+  },
+  "revised_before_final_matrix_cad": true,
+  "positive_matrix": [
+    "Q01",
+    "Q02",
+    "Q03",
+    "Q04.R1",
+    "Q05",
+    "Q06",
+    "Q07",
+    "Q08"
+  ],
+  "negative_regression": {
+    "id": "Q04-original",
+    "definition_path": "qualification/fp02/cases/Q04.json",
+    "sha256": "c5185fcbf61acb58f8df37405396552329197da444dcf159a7e4fd6f1081d4ba",
+    "expected_status": "REJECTED before CAD queueing"
+  },
+  "runtime": {
+    "build_id": "openvsp-3.54.0-bladegen-fixed-plane.1",
+    "contract": "bladegen.fixed-radial-sections.v1",
+    "fingerprint": "af69cfbeb477880fd7caf13c3fbdef3a2f69f40430dafe4e5a330d9bb7836edd",
+    "native_patch_sha256": "0dd6f87b867ccaeb6518f8f01f7093e4e1a05f02d0c5a268c66cc1d157ed71d3"
+  },
+  "trial_profile": {
+    "launcher": "./scripts/start_level1_trial.sh",
+    "worker_timeout_seconds": 900,
+    "ordinary_default_seconds": 300
+  }
+}

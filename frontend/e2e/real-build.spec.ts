@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import path from 'node:path'
 import { submitBuild, waitForExactResult } from './jobIdentity'
 
-const evidence = (name: string) => path.resolve('../docs/screenshots', name)
+const evidence = (name: string) => (process.env.L1A_EVIDENCE_ROOT ? path.resolve(process.env.L1A_EVIDENCE_ROOT, 'screenshots', name) : path.resolve('../docs/screenshots', name))
 
 test('real backend build reports progress and supports expanded CAD inspection', async ({ page }) => {
   await page.goto('/')
